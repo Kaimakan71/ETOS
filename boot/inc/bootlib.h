@@ -664,6 +664,7 @@ ConsoleInfo (
 
 VOID
 ConsoleWarning (
+    IN PCSTR Source,
     IN PWSTR Format,
     ...
     );
@@ -679,10 +680,10 @@ ConsoleError (
 // Debugging services.
 //
 #if !defined(NDEBUG)
-#define DebugPrint              ConsolePrint
-#define DebugInfo               ConsoleInfo
-#define DebugWarning            ConsoleWarning
-#define DebugError(Format, ...) ConsoleError(__func__, Format, __VA_ARGS__)
+#define DebugPrint        ConsolePrint
+#define DebugInfo         ConsoleInfo
+#define DebugWarning(...) ConsoleWarning(__func__, __VA_ARGS__)
+#define DebugError(...)   ConsoleError(__func__, __VA_ARGS__)
 #else
 #define DebugPrint(Format, ...)
 #define DebugInfo(Format, ...)

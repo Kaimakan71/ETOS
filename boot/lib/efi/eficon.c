@@ -56,6 +56,9 @@ Return Value:
     WCHAR SourceBuffer[64];
     ULONG Index;
 
+    //
+    // Process format and arguments.
+    //
     BufferUsed = vswprintf_s((PWCHAR)BlScratchBuffer, (sizeof(BlScratchBuffer) / sizeof(WCHAR)) - 1, Format, Arguments);
 
     ContextType = CurrentExecutionContext->Type;
@@ -63,11 +66,20 @@ Return Value:
         BlpArchSwitchContext(ExecutionContextFirmware);
     }
 
+    //
+    // Print styled type string.
+    //
     EfiConOut->SetAttribute(EfiConOut, TypeAttribute);
     EfiConOut->OutputString(EfiConOut, TypeString);
     EfiConOut->SetAttribute(EfiConOut, EFI_TEXT_ATTR(EFI_WHITE, EFI_BLACK));
 
+    //
+    // Print source string, if present.
+    //
     if (Source != NULL) {
+        //
+        // Convert Source to a wide-character string.
+        //
         Index = 0;
         while (*Source != '\0' && Index < ((sizeof(SourceBuffer) / sizeof(WCHAR)) - 3)) {
             SourceBuffer[Index++] = (WCHAR)*Source++;
@@ -79,6 +91,9 @@ Return Value:
         EfiConOut->OutputString(EfiConOut, SourceBuffer);
     }
 
+    //
+    // Print formatted message.
+    //
     if (BufferUsed >= 1) {
         EfiConOut->OutputString(EfiConOut, (PWSTR)BlScratchBuffer);
     }
@@ -117,6 +132,9 @@ Return Value:
     int BufferUsed;
     EXECUTION_CONTEXT_TYPE ContextType;
 
+    //
+    // Process format and arguments.
+    //
     va_start(Arguments, Format);
     BufferUsed = vswprintf_s((PWCHAR)BlScratchBuffer, (sizeof(BlScratchBuffer) / sizeof(WCHAR)) - 1, Format, Arguments);
     va_end(Arguments);
@@ -129,6 +147,9 @@ Return Value:
         BlpArchSwitchContext(ExecutionContextFirmware);
     }
 
+    //
+    // Print formatted message.
+    //
     EfiConOut->OutputString(EfiConOut, (PWSTR)BlScratchBuffer);
 
     if (ContextType != ExecutionContextFirmware) {
@@ -170,6 +191,7 @@ Return Value:
 
 VOID
 ConsoleWarning (
+    IN PCSTR Source,
     IN PWSTR Format,
     ...
     )
@@ -181,6 +203,8 @@ Routine Description:
     Prints a formatted warning message to the console.
 
 Arguments:
+
+    Source - Pointer to a string that describes the reporter of the warning.
 
     Format - Pointer to the format string.
 
@@ -196,7 +220,7 @@ Return Value:
     va_list Arguments;
 
     va_start(Arguments, Format);
-    PrintFormatted(NULL, Format, Arguments, L"[Warning] ", EFI_TEXT_ATTR(EFI_YELLOW, EFI_BLACK));
+    PrintFormatted(Source, Format, Arguments, L"[Warning] ", EFI_TEXT_ATTR(EFI_YELLOW, EFI_BLACK));
     va_end(Arguments);
 }
 

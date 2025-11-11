@@ -71,7 +71,7 @@ Return Value:
     // TODO: Implement this routine.
     //
 
-    EfiDebugPrint(L"Warning: AhCreateLoadOptionsList not implemented\r\n");
+    EfiDebugTrace(L"not implemented\r\n");
     return STATUS_NOT_IMPLEMENTED;
 }
 
@@ -108,13 +108,18 @@ Return Value:
     EFI_DEVICE_PATH *Node;
     VMBUS_CHANNEL_DEVICE_PATH *VmbusChannelNode;
 
+    //
+    // Find the first VMBus channel node.
+    //
     Node = DevicePath;
     while (!IsDevicePathEndType(Node) && DevicePathSubType(Node) != END_ENTIRE_DEVICE_PATH_SUBTYPE) {
-        if (DevicePathType(Node) == HARDWARE_DEVICE_PATH &&
-            DevicePathSubType(Node) == HW_VENDOR_DP      &&
-            IsEqualGUID((PGUID)&(((VENDOR_DEVICE_PATH *)Node)->Guid), (PGUID)&EfiVmbusChannelDevicePath)
-            ) {
+        if (DevicePathType(Node) == HARDWARE_DEVICE_PATH
+            && DevicePathSubType(Node) == HW_VENDOR_DP
+            && IsEqualGUID((PGUID)&(((VENDOR_DEVICE_PATH *)Node)->Guid), (PGUID)&EfiVmbusChannelDevicePath)) {
 
+            //
+            // Return interface identifiers.
+            //
             VmbusChannelNode = (VMBUS_CHANNEL_DEVICE_PATH *)Node;
             RtlCopyMemory(InterfaceType, &VmbusChannelNode->InterfaceType, sizeof(*InterfaceType));
             RtlCopyMemory(InterfaceInstance, &VmbusChannelNode->InterfaceInstance, sizeof(*InterfaceInstance));
@@ -317,6 +322,9 @@ Return Value:
         return STATUS_INVALID_PARAMETER;
     }
 
+    //
+    // Translate the device path into a device identifier.
+    //
     RtlZeroMemory(Option, sizeof(*Option));
     DeviceElement = (PBCDE_DEVICE)((PUCHAR)Option + sizeof(BOOT_ENTRY_OPTION));
     Status = EfiInitTranslateDevicePath(
@@ -523,13 +531,11 @@ Return Value:
     // Check for Windows-specific options.
     //
     WindowsOptions = (PWINDOWS_OS_OPTIONS)LoadOptions;
-    if (
-        WindowsOptions != NULL                             &&
-        LoadOptionsSize >= sizeof(WINDOWS_OS_OPTIONS)      &&
-        WindowsOptions->Size >= sizeof(WINDOWS_OS_OPTIONS) &&
-        WindowsOptions->Signature == WINDOWS_OS_OPTIONS_SIGNATURE
-        ) {
-        EfiDebugPrint(L"Detected Windows boot options format\r\n");
+    if (WindowsOptions != NULL
+        && LoadOptionsSize >= sizeof(WINDOWS_OS_OPTIONS)
+        && WindowsOptions->Size >= sizeof(WINDOWS_OS_OPTIONS)
+        && WindowsOptions->Signature == WINDOWS_OS_OPTIONS_SIGNATURE) {
+        EfiDebugTrace(L"detected Windows OS options format\r\n");
         UsingWindowsOptions = TRUE;
         OptionsString = (PWSTR)WindowsOptions->Options;
         OptionsStringLength = LoadOptionsSize - FIELD_OFFSET(WINDOWS_OS_OPTIONS, Options);
@@ -560,7 +566,7 @@ Return Value:
     //
     BcdIdentifierSet = FALSE;
     if (LoadOptions != NULL && (BcdIdentifierOption = wcsstr(OptionsString, L"BCDOBJECT=")) != NULL) {
-        EfiDebugPrint(L"Found BCDOBJECT option\r\n");
+        EfiDebugTrace(L"found BCDOBJECT option\r\n");
         RtlInitUnicodeString(&UnicodeString, (PWSTR)((PUCHAR)BcdIdentifierOption + sizeof(L"BCDOBJECT=") - sizeof(UNICODE_NULL)));
         Status = RtlGUIDFromString(&UnicodeString, &Entry->BcdIdentifier);
         if (NT_SUCCESS(Status)) {
@@ -586,7 +592,7 @@ Return Value:
         BufferRemaining
     );
     if (!NT_SUCCESS(Status)) {
-        EfiDebugPrint(L"Failed to convert boot application device path\r\n");
+        EfiDebugTrace(L"failed to convert boot application device path\r\n");
         Option->IsInvalid = TRUE;
         goto Quit;
     }
@@ -618,7 +624,7 @@ Return Value:
         );
     }
     if (!NT_SUCCESS(Status)) {
-        EfiDebugPrint(L"Failed to convert boot application file path\r\n");
+        EfiDebugTrace(L"failed to convert boot application file path\r\n");
         goto Quit;
     }
     PreviousOption->NextOptionOffset = OptionsSize;
@@ -627,7 +633,7 @@ Return Value:
     BufferRemaining -= Size;
 
     //
-    // Try to find BCD identifier.
+    // Parse OS path if no BCD identifier was set.
     //
     if (UsingWindowsOptions && !BcdIdentifierSet) {
         OsPath = (PWINDOWS_OS_PATH)((PUCHAR)WindowsOptions + WindowsOptions->OsPathOffset);
@@ -646,7 +652,7 @@ Return Value:
                 BufferRemaining
             );
             if (!NT_SUCCESS(Status)) {
-                EfiDebugPrint(L"Failed to convert OS loader device path\r\n");
+                EfiDebugTrace(L"failed to convert OS loader device path\r\n");
                 goto Quit;
             }
             PreviousOption->NextOptionOffset = OptionsSize;
@@ -666,7 +672,7 @@ Return Value:
                 BufferRemaining
             );
             if (!NT_SUCCESS(Status)) {
-                EfiDebugPrint(L"Failed to convert OS loader file path\r\n");
+                EfiDebugTrace(L"failed to convert OS loader file path\r\n");
                 goto Quit;
             }
             PreviousOption->NextOptionOffset = OptionsSize;
@@ -676,6 +682,9 @@ Return Value:
         }
     }
 
+    //
+    // Parse remaining options.
+    //
     if (OptionsString != NULL) {
         PreviousOption = Option;
         AhCreateLoadOptionsList(
@@ -736,7 +745,7 @@ Return Value:
     BootDevice->Size = sizeof(DEVICE_IDENTIFIER);
 
     //
-    // Memory map devices are treated as ram disks.
+    // Memory map devices are treated as RAM disks.
     //
     if (DevicePathType(EfiDevicePath) == HARDWARE_DEVICE_PATH && DevicePathSubType(EfiDevicePath) == HW_MEMMAP_DP) {
         MemmapNode = (MEMMAP_DEVICE_PATH *)EfiDevicePath;
@@ -760,7 +769,7 @@ Return Value:
     if (DevicePathType(DeviceNode) == ACPI_DEVICE_PATH) {
         AcpiHidNode = (ACPI_HID_DEVICE_PATH *)DeviceNode;
         if (AcpiHidNode->HID != EISA_PNP_ID(0x604) && AcpiHidNode->HID != EISA_PNP_ID(0x700)) {
-            EfiDebugPrintf(L"Unrecognized ACPI device (HID %x)\r\n", AcpiHidNode->HID);
+            EfiDebugTrace(L"unrecognized ACPI device (HID %x)\r\n", AcpiHidNode->HID);
             return STATUS_UNSUCCESSFUL;
         }
 
@@ -789,7 +798,6 @@ Return Value:
             if (BufferSize >= BootDevice->Size) {
                 RtlMoveMemory(BootDevice->Uri.Uri, ((URI_DEVICE_PATH *)DeviceNode)->Uri, BootDevice->Uri.UriLength);
             }
-
             break;
         default:
             BootDevice->Type = DEVICE_TYPE_BLOCK;
@@ -818,7 +826,7 @@ Return Value:
     // Only media devices should be left now.
     //
     if (DevicePathType(DeviceNode) != MEDIA_DEVICE_PATH) {
-        EfiDebugPrintf(L"Unsupported boot device (type %x)\r\n", DevicePathType(DeviceNode));
+        EfiDebugTrace(L"unsupported boot device (type %x)\r\n", DevicePathType(DeviceNode));
         return STATUS_UNSUCCESSFUL;
     }
 
@@ -844,7 +852,7 @@ Return Value:
         switch (HarddriveNode->SignatureType) {
         case SIGNATURE_TYPE_GUID:
             BlockDevice->HardDisk.PartitionType = HARD_DISK_PARTITION_TYPE_GPT;
-            RtlCopyMemory(&BootDevice->PartitionEx.Gpt.Guid, &HarddriveNode->Signature, sizeof(GUID));
+            RtlCopyMemory(&BootDevice->PartitionEx.Gpt.Guid, &HarddriveNode->Signature, sizeof(BootDevice->PartitionEx.Gpt.Guid));
             BootDevice->Attributes |= DEVICE_ATTRIBUTE_NO_PARENT_SIGNATURE;
             break;
         case SIGNATURE_TYPE_MBR:
@@ -865,7 +873,7 @@ Return Value:
         BootDevice->BlockDevice.Cdrom.DriveNumber = 0;
         break;
     default:
-        EfiDebugPrintf(L"Unsupported boot device (media subtype %x)\r\n", DevicePathSubType(DeviceNode));
+        EfiDebugTrace(L"unsupported boot device (media subtype %x)\r\n", DevicePathSubType(DeviceNode));
         return STATUS_UNSUCCESSFUL;
     }
 
@@ -934,14 +942,17 @@ Return Value:
         &DeviceHandle
     );
     if (Status != EFI_SUCCESS) {
-        EfiDebugPrintf(L"Failed to locate PXE base code device path (Status=%x)\r\n", Status);
+        EfiDebugTrace(L"failed to locate PXE base code device path (Status=0x%x)\r\n", Status);
         return STATUS_INVALID_PARAMETER;
     }
 
     //
-    // TODO: Check for EFI 1.1+ before using OpenProtocol().
+    // OpenProtocol requires EFI 1.1+.
     //
-    EfiDebugPrint(L"Warning: not checking for OpenProtocol support\r\n");
+    if (SystemTable->BootServices->Hdr.Revision < EFI_1_10_SYSTEM_TABLE_REVISION) {
+        EfiDebugTrace(L"OpenProtocol support is required\r\n");
+        return STATUS_NOT_SUPPORTED;
+    }
 
     //
     // Open the protocol using the handle.
@@ -955,13 +966,13 @@ Return Value:
         EFI_OPEN_PROTOCOL_GET_PROTOCOL
     );
     if (Status != EFI_SUCCESS) {
-        EfiDebugPrintf(L"Failed to open PXE base code protocol (Status=%x)\r\n", Status);
+        EfiDebugTrace(L"failed to open PXE base code protocol (Status=0x%x)\r\n", Status);
         return STATUS_INVALID_PARAMETER;
     }
 
     Mode = PxeBaseCode->Mode;
     if (Mode->UsingIpv6 || (Mode->ProxyOffer.Dhcpv4.BootpBootFile[0] == '\0' && Mode->DhcpAck.Dhcpv4.BootpBootFile[0] == '\0')) {
-        EfiDebugPrint(L"Invalid or unsupported PXE base code mode\r\n");
+        EfiDebugTrace(L"invalid or unsupported PXE base code mode\r\n");
         Option->IsInvalid = TRUE;
         return STATUS_SUCCESS;
     }
@@ -986,6 +997,7 @@ Return Value:
     // TODO: Finish implementing this routine.
     //
 
+    EfiDebugTrace(L"not implemented\r\n");
     return STATUS_NOT_IMPLEMENTED;
 }
 
@@ -1020,6 +1032,7 @@ Return Value:
 
 {
     EFI_STATUS Status;
+    ULONG RevisionMajor, RevisionMinor;
     EFI_PHYSICAL_ADDRESS BadPageAddress;
     EFI_LOADED_IMAGE *LoadedImage;
     EFI_DEVICE_PATH *DevicePath;
@@ -1032,6 +1045,18 @@ Return Value:
     PRETURN_DATA ReturnData;
 
     BlpApplicationFlags |= BOOT_APPLICATION_FLAG_LOADED_BY_FIRMWARE;
+
+    //
+    // Print basic firmware information.
+    //
+    RevisionMajor = SystemTable->Hdr.Revision >> 16;
+    RevisionMinor = SystemTable->Hdr.Revision & 0xffff;
+    if (RevisionMinor % 10) {
+        EfiDebugPrintf(L"System table revision: %d.%d.%d\r\n", RevisionMajor, RevisionMinor / 10, RevisionMinor % 10);
+    } else {
+        EfiDebugPrintf(L"System table revision: %d.%d\r\n", RevisionMajor, RevisionMinor / 10);
+    }
+    EfiDebugPrintf(L"Firmware vendor: \"%s\"\r\n", SystemTable->FirmwareVendor);
 
     //
     // Page 0x102 may be broken on some machines.
@@ -1049,7 +1074,7 @@ Return Value:
         (VOID **)&LoadedImage
     );
     if (Status != EFI_SUCCESS) {
-        EfiDebugPrintf(L"Failed to get boot application image information (Status=0x%x)\r\n", Status);
+        EfiDebugTrace(L"failed to get boot application image information (Status=0x%x)\r\n", Status);
         return NULL;
     }
 #if defined(_WIN64)
@@ -1068,7 +1093,7 @@ Return Value:
         (VOID **)&DevicePath
     );
     if (Status != EFI_SUCCESS) {
-        EfiDebugPrintf(L"Failed to get boot application device path (Status=0x%x)\r\n", Status);
+        EfiDebugTrace(L"failed to get boot application device path (Status=0x%x)\r\n", Status);
         return NULL;
     }
 
@@ -1163,7 +1188,7 @@ Return Value:
     // Detect buffer overflow.
     //
     if (ScratchUsed > sizeof(EfiInitScratch)) {
-        EfiDebugPrintf(L"EfiInitScratch buffer overflow (%x/%x bytes used)\r\n", ScratchUsed, sizeof(EfiInitScratch));
+        EfiDebugTrace(L"EfiInitScratch buffer overflow (%x/%x bytes used)\r\n", ScratchUsed, sizeof(EfiInitScratch));
         return NULL;
     }
 

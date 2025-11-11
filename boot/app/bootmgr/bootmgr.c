@@ -72,8 +72,9 @@ Return Value:
         goto Exit;
     }
 
-    DebugInfo(L"Starting ETOS boot manager...\r\n");
-
+    //
+    // Nothing else to do right now.
+    //
     DebugInfo(L"Halting...\r\n");
     while (TRUE) {
 #if defined(__x86_64__) || defined(__i386__)

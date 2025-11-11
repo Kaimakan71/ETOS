@@ -40,19 +40,24 @@ EfiDebugInitialize (
     );
 
 VOID
-EfiDebugPrint (
-    IN PWSTR String
-    );
-
-VOID
 EfiDebugPrintf (
     IN PWSTR Format,
     ...
     );
+
+VOID
+EfiDebugSource (
+    IN PCSTR Source,
+    IN PWSTR Format,
+    ...
+    );
+
+#define EfiDebugTrace(...) EfiDebugSource(__func__, __VA_ARGS__)
 #else
 #define EfiDebugInitialize(Interface)
-#define EfiDebugPrint(String)
 #define EfiDebugPrintf(Format, ...)
+#define EfiDebugSource(Source, Format, ...)
+#define EfiDebugTrace(Format, ...)
 #endif
 
 //
