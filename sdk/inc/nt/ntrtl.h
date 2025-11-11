@@ -193,10 +193,25 @@ Return Value:
 
 VOID
 NTAPI
+RtlInitAnsiString (
+    OUT PANSI_STRING Destination,
+    IN  PCSTR        Source
+    );
+
+VOID
+NTAPI
 RtlInitUnicodeString (
    OUT PUNICODE_STRING Destination,
    IN  PCWSTR          Source
    );
+
+NTSTATUS
+NTAPI
+RtlAnsiStringToUnicodeString (
+    OUT PUNICODE_STRING DestinationString,
+    IN  PCANSI_STRING   SourceString,
+    IN  BOOLEAN         AllocateDestinationString
+    );
 
 NTSTATUS
 NTAPI

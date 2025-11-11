@@ -285,6 +285,12 @@ typedef struct {
 } STRING, *PSTRING;
 
 typedef STRING ANSI_STRING, *PANSI_STRING;
+typedef CONST ANSI_STRING *PCANSI_STRING;
+
+#define ANSI_NULL ((CHAR) 0)
+
+#define ANSI_STRING_MAX_BYTES ((USHORT) 65535)
+#define ANSI_STRING_MAX_CHARS (65535)
 
 //
 // Unicode string.
@@ -295,6 +301,8 @@ typedef struct {
     USHORT MaximumLength;
     PWCH   Buffer;
 } UNICODE_STRING, *PUNICODE_STRING;
+
+typedef CONST UNICODE_STRING *PCUNICODE_STRING;
 
 #define UNICODE_NULL ((WCHAR) 0)
 

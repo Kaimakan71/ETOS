@@ -20,6 +20,7 @@ Abstract:
 #define _NTSTATUS_H
 
 #define STATUS_SUCCESS                      ((NTSTATUS) 0x00000000L)
+#define STATUS_BUFFER_OVERFLOW              ((NTSTATUS) 0x80000005L)
 #define STATUS_MEDIA_CHANGED                ((NTSTATUS) 0x8000001CL)
 #define STATUS_UNSUCCESSFUL                 ((NTSTATUS) 0xC0000001L)
 #define STATUS_NOT_IMPLEMENTED              ((NTSTATUS) 0xC0000002L)
