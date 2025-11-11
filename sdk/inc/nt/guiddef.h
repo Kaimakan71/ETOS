@@ -24,6 +24,17 @@ typedef struct {
     unsigned short Data2;
     unsigned short Data3;
     unsigned char  Data4[8];
-} GUID;
+} GUID, *PGUID;
+
+FORCEINLINE
+BOOLEAN
+IsEqualGUID (
+    PGUID Guid1,
+    PGUID Guid2
+    )
+
+{
+    return (*((PULONGLONG)Guid1) == *((PULONGLONG)Guid2)) && (*((PULONGLONG)Guid1 + 1) == *((PULONGLONG)Guid2 + 1));
+}
 
 #endif /* !_GUIDDEF_H */

@@ -98,7 +98,7 @@ Abstract:
     #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
         #define STATIC_ASSERT _Static_assert
     #else
-        #warning Static assertion is not available; compilation problems may not be detected!
+        #warning Static assertion is not available; compilation problems may not be detected
         #define STATIC_ASSERT(Expr, Msg)
     #endif
 #endif /* !STATIC_ASSERT */

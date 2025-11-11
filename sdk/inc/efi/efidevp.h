@@ -108,6 +108,9 @@ typedef struct {
 #define UNKNOWN_DEVICE_GUID \
     { 0xcf31fac5, 0xc24e, 0x11d2, { 0x85, 0xf3, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b } }
 
+#define VMBUS_CHANNEL_DEVICE_GUID \
+    { 0x9b17e5a2, 0x0891, 0x42dd, { 0xb6, 0x53, 0x80, 0xb5, 0xc2, 0x28, 0x09, 0xba } }
+
 typedef struct {
     EFI_DEVICE_PATH_PROTOCOL Header;
 
@@ -125,6 +128,12 @@ typedef struct {
     VENDOR_DEVICE_PATH DevicePath;
     UINT8 LegacyDriveLetter;
 } UNKNOWN_DEVICE_VENDOR_DEVICE_PATH;
+
+typedef struct {
+    VENDOR_DEVICE_PATH DevicePath;
+    EFI_GUID           InterfaceType;
+    EFI_GUID           InterfaceInstance;
+} VMBUS_CHANNEL_DEVICE_PATH;
 
 //
 // Controller hardware subtype.

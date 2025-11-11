@@ -27,7 +27,7 @@ TranslatePointer (
 
 Routine Description:
 
-    Wrapper around MmArchTranslateVirtualAddress() to make pointer translation easier.
+    Wrapper around MmArchTranslateVirtualAddress to make pointer translation easier.
 
 Arguments:
 
@@ -63,7 +63,7 @@ EfiGetMemoryMap (
 
 Routine Description:
 
-    Wrapper around GetMemoryMap().
+    Wrapper around GetMemoryMap.
 
 Arguments:
 
@@ -137,7 +137,7 @@ EfiAllocatePages (
 
 Routine Description:
 
-    Wrapper for AllocatePages().
+    Wrapper around AllocatePages.
 
 Arguments:
 
@@ -198,7 +198,7 @@ EfiFreePages (
 
 Routine Description:
 
-    Wrapper for FreePages().
+    Wrapper around FreePages.
 
 Arguments:
 

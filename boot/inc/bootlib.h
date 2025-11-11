@@ -277,14 +277,31 @@ typedef struct {
 } NETWORK_DEVICE_IDENTIFIER, *PNETWORK_DEVICE_IDENTIFIER;
 
 //
+// VMBus (Virtual Machine Bus) channel identifier.
+//
+typedef struct {
+    GUID InterfaceType;
+    GUID InterfaceInstance;
+} VMBUS_CHANNEL_IDENTIFIER, *PVMBUS_CHANNEL_IDENTIFIER;
+
+//
+// URI (Uniform Resource Identifier) identifier.
+//
+typedef struct {
+    ULONG UriLength;
+    CHAR  Uri[ANYSIZE_ARRAY];
+} URI_IDENTIFIER, *PURI_IDENTIFIER;
+
+//
 // Device identifier.
 //
 
-#define DEVICE_TYPE_BLOCK        0
-#define DEVICE_TYPE_PARTITION    2
-#define DEVICE_TYPE_NETWORK      4
-#define DEVICE_TYPE_PARTITION_EX 6
-#define DEVICE_TYPE_URI          9
+#define DEVICE_TYPE_BLOCK         0
+#define DEVICE_TYPE_PARTITION     2
+#define DEVICE_TYPE_NETWORK       4
+#define DEVICE_TYPE_PARTITION_EX  6
+#define DEVICE_TYPE_VMBUS_CHANNEL 7
+#define DEVICE_TYPE_URI           9
 
 #define DEVICE_ATTRIBUTE_NO_PARENT_SIGNATURE 0x00000004
 
@@ -299,6 +316,8 @@ typedef struct {
         PARTITION_IDENTIFIER      Partition;
         NETWORK_DEVICE_IDENTIFIER NetworkDevice;
         PARTITION_IDENTIFIER_EX   PartitionEx;
+        VMBUS_CHANNEL_IDENTIFIER  VmbusChannel;
+        URI_IDENTIFIER            Uri;
     };
 } DEVICE_IDENTIFIER, *PDEVICE_IDENTIFIER;
 
@@ -471,6 +490,9 @@ typedef BCDE_DATA_TYPE *PBCDE_DATA_TYPE;
 #define BCDE_LIBRARY_TYPE_RECOVERY_SEQUENCE          0x14000008
 #define BCDE_LIBRARY_TYPE_DISPLAY_ADVANCED_OPTIONS   0x16000040
 
+#define BCDE_APPLICATION_TYPE_APPLICATION_DEVICE 0x21000001
+#define BCDE_APPLICATION_TYPE_APPLICATION_PATH   0x22000002
+
 typedef struct {
     GUID              Options;
     DEVICE_IDENTIFIER Identifier;
@@ -506,16 +528,28 @@ typedef struct {
 // Windows boot options.
 //
 
-#define WINDOWS_BOOT_OPTIONS_SIGNATURE 0x0053574f444e4957 /* "WINDOWS\0" */
+#define WINDOWS_OS_OPTIONS_SIGNATURE 0x0053574f444e4957 /* "WINDOWS\0" */
+
+#define WINDOWS_OS_PATH_TYPE_INTERNAL 3
+#define WINDOWS_OS_PATH_TYPE_EFI      4
 
 #pragma pack(push,1)
+
+typedef struct {
+    ULONG Unknown;
+    ULONG Length;
+    ULONG Type;
+    UCHAR Data[ANYSIZE_ARRAY];
+} WINDOWS_OS_PATH, *PWINDOWS_OS_PATH;
+
 typedef struct {
     ULONGLONG Signature;
     ULONG     Version;
     ULONG     Size;
     ULONG     OsPathOffset;
     WCHAR     Options[2];
-} WINDOWS_BOOT_OPTIONS, *PWINDOWS_BOOT_OPTIONS;
+} WINDOWS_OS_OPTIONS, *PWINDOWS_OS_OPTIONS;
+
 #pragma pack(pop)
 
 #define PLATFORM_FLAG_FIRMWARE_EXECUTION_CONTEXT 0x00100000
