@@ -51,6 +51,43 @@ print_hex (
 
 static
 size_t
+print_dec (
+    wchar_t *wcs,
+    size_t maxlen,
+    unsigned int num
+    )
+
+{
+    wchar_t *dest;
+    size_t n;
+    unsigned int div, pad;
+    char ch;
+
+    dest = wcs;
+    n = 0;
+    div = 1000000000;
+    pad = 1;
+    while (n < maxlen && div > 0) {
+        ch = '0' + (num / div);
+        num %= div;
+
+        if (ch != '0') {
+            pad = 0;
+        }
+
+        if (!pad || div == 1) {
+            *dest++ = ch;
+            n++;
+        }
+
+        div /= 10;
+    }
+
+    return n;
+}
+
+static
+size_t
 print_str (
     wchar_t *wcs,
     size_t maxlen,
@@ -99,6 +136,12 @@ vswprintf_s (
         switch (*format) {
         case 'x':
             len = print_hex(dest, maxlen - total, va_arg(args, unsigned int));
+            dest += len;
+            total += len;
+            format++;
+            break;
+        case 'd':
+            len = print_dec(dest, maxlen - total, va_arg(args, unsigned int));
             dest += len;
             total += len;
             format++;
