@@ -135,6 +135,7 @@ Arguments:
 Return Value:
 
     TRUE if the list is now empty,
+
     FALSE if the list still has at least one entry.
 
 --*/
@@ -177,6 +178,7 @@ Arguments:
 Return Value:
 
     STATUS_SUCCESS if successful.
+
     STATUS_INTEGER_OVERFLOW if unsuccessful.
 
 --*/

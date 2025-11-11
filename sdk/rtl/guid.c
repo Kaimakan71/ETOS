@@ -15,6 +15,7 @@ Abstract:
 --*/
 
 #include <nt.h>
+#include <ntrtl.h>
 #include <stdarg.h>
 
 static int
