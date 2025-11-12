@@ -146,7 +146,7 @@ Arguments:
 
     String - A GUID string in the format {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}.
 
-    Guid - The GUID structure which is to recieve the data.
+    Guid - Pointer to a GUID that receives the data.
 
 Return Value:
 
