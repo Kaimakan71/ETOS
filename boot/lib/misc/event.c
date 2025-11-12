@@ -16,7 +16,9 @@ Abstract:
 
 #include "bootlib.h"
 
+ULONG EnNotificationInProgress = 0;
 BOOLEAN EnSubsystemInitialized = FALSE;
+BOOLEAN EnDeregistrationPending = FALSE;
 LIST_ENTRY EnEventNotificationList;
 
 NTSTATUS
@@ -78,11 +80,64 @@ Return Value:
 {
     (VOID) Context;
 
-    DebugInfo(L"Got notification for event 0x%x\r\n", Event);
+    if (Event == 0 || (Event >> 28) > 2) {
+        return;
+    }
+
+    EnNotificationInProgress++;
+
+    //
+    // TODO: Finish implementing this routine.
+    //
+
+    EnNotificationInProgress--;
+
+    if (!EnDeregistrationPending) {
+        EnDeregistrationPending = FALSE;
+    }
+}
+
+NTSTATUS
+BlEnRegisterEventHandler (
+    IN ULONG          Event,
+    IN PEVENT_HANDLER Handler,
+    IN ULONG          Unknown0,
+    IN ULONG          Unknown1
+    )
+
+/*++
+
+Routine Description:
+
+    Registers a handler to receive event notifications.
+
+Arguments:
+
+    Event - The event identifier.
+
+    Handler - Pointer to the event handler.
+
+    Unknown0 - Unknown.
+
+    Unknown1 - Unknown.
+
+Return Value:
+
+    STATUS_SUCCESS.
+
+--*/
+
+{
+    (VOID) Event;
+    (VOID) Handler;
+    (VOID) Unknown0;
+    (VOID) Unknown1;
 
     //
     // TODO: Implement this routine.
     //
+
+    return STATUS_SUCCESS;
 }
 
 VOID
@@ -109,6 +164,6 @@ Return Value:
 {
     DebugInfo(L"Initializing event notification subsystem...\r\n");
 
-    EnSubsystemInitialized = TRUE;
     InitializeListHead(&EnEventNotificationList);
+    EnSubsystemInitialized = TRUE;
 }
