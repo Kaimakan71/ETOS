@@ -23,12 +23,13 @@ Abstract:
     sizeof(FIRMWARE_DATA) + \
     sizeof(RETURN_DATA))
 
-ULONG BlPlatformFlags = 0x2a0000 | PLATFORM_FLAG_FIRMWARE_EXECUTION_CONTEXT;
 ULONG BlpApplicationFlags = 0;
 PBOOT_APPLICATION_PARAMETERS BlpApplicationParameters;
 BOOT_LIBRARY_PARAMETERS BlpLibraryParameters;
 BOOT_APPLICATION_ENTRY BlpApplicationEntry;
 PWSTR BlpApplicationBaseDirectory;
+BOOLEAN BlpApplicationIdentifierSet = FALSE;
+ULONG BlPlatformFlags = 0x2a0000 | PLATFORM_FLAG_FIRMWARE_EXECUTION_CONTEXT;
 
 NTSTATUS
 InitializeLibrary (
@@ -95,7 +96,7 @@ Return Value:
     //
     // ???
     //
-    if (BootEntry->Attributes & BOOT_APPLICATION_ENTRY_ATTRIBUTE_NO_TRAP_VECTORS) {
+    if (BootEntry->Attributes & BOOT_ENTRY_NO_TRAP_VECTORS) {
         __debugbreak();
     }
 
@@ -113,25 +114,31 @@ Return Value:
     RtlCopyMemory(&BlpLibraryParameters, LibraryParameters, sizeof(BlpLibraryParameters));
 
     //
-    // Internal BCD options are external to the library.
+    // Internal options are external to the library.
     //
     Attributes = BootEntry->Attributes;
-    if (Attributes & BOOT_APPLICATION_ENTRY_ATTRIBUTE_INTERNAL_BCD_OPTIONS) {
-        Attributes &= ~BOOT_APPLICATION_ENTRY_ATTRIBUTE_INTERNAL_BCD_OPTIONS;
-        Attributes |= BOOT_APPLICATION_ENTRY_ATTRIBUTE_EXTERNAL_BCD_OPTIONS;
+    if (Attributes & BOOT_ENTRY_OPTIONS_INTERNAL) {
+        Attributes &= ~BOOT_ENTRY_OPTIONS_INTERNAL;
+        Attributes |= BOOT_ENTRY_OPTIONS_EXTERNAL;
     }
     BlpApplicationEntry.Attributes = Attributes;
 
     //
     // Use whichever BCD identifier is available.
     //
-    if (!(BlpApplicationEntry.Attributes & BOOT_APPLICATION_ENTRY_ATTRIBUTE_NO_BCD_IDENTIFIER)) {
-        RtlCopyMemory(&BlpApplicationEntry.BcdIdentifier, &BootEntry->BcdIdentifier, sizeof(BlpApplicationEntry.BcdIdentifier));
-    } else if (LibraryParameters->BcdIdentifier != NULL) {
-        RtlCopyMemory(&BlpApplicationEntry.BcdIdentifier, LibraryParameters->BcdIdentifier, sizeof(BlpApplicationEntry.BcdIdentifier));
+    if (!(BlpApplicationEntry.Attributes & BOOT_ENTRY_NO_IDENTIFIER)) {
+        RtlCopyMemory(&BlpApplicationEntry.Identifier, &BootEntry->Identifier, sizeof(BlpApplicationEntry.Identifier));
+    } else if (LibraryParameters->Identifier != NULL) {
+        RtlCopyMemory(&BlpApplicationEntry.Identifier, LibraryParameters->Identifier, sizeof(BlpApplicationEntry.Identifier));
+        BlpApplicationIdentifierSet = TRUE;
     } else {
-        RtlZeroMemory(&BlpApplicationEntry.BcdIdentifier, sizeof(BlpApplicationEntry.BcdIdentifier));
+        RtlZeroMemory(&BlpApplicationEntry.Identifier, sizeof(BlpApplicationEntry.Identifier));
     }
+
+    //
+    // Use inline options.
+    //
+    BlpApplicationEntry.Options = &BootEntry->InlineOptions;
 
     //
     // Begin architecture-specific initialization.
@@ -188,49 +195,6 @@ Phase0Failed:
 }
 
 NTSTATUS
-BlInitializeLibrary (
-    IN PBOOT_APPLICATION_PARAMETERS ApplicationParameters,
-    IN PBOOT_LIBRARY_PARAMETERS     LibraryParameters
-    )
-
-/*++
-
-Routine Description:
-
-    Initializes the boot library.
-
-Arguments:
-
-    ApplicationParameters - Pointer to the application parameters structure.
-
-    LibraryParameters - Pointer to the library parameters structure.
-
-Return Value:
-
-    STATUS_SUCCESS if successful.
-
-    Error code if unsuccessful.
-
---*/
-
-{
-    if (!(LibraryParameters->Flags & BOOT_LIBRARY_FLAG_REINITIALIZE)) {
-        return InitializeLibrary(ApplicationParameters, LibraryParameters);
-    }
-
-    RtlCopyMemory(&BlpLibraryParameters, LibraryParameters, sizeof(BlpLibraryParameters));
-    if (!(LibraryParameters->Flags & BOOT_LIBRARY_FLAG_REINITIALIZE_ALL)) {
-        return STATUS_SUCCESS;
-    }
-
-    //
-    // TODO: Implement remaining functionality.
-    //
-
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS
 BlDestroyLibrary (
     VOID
     )
@@ -282,4 +246,78 @@ Return Value:
 
     ArchRestoreProcessorFeatures(TRUE);
     return ReturnStatus;
+}
+
+PGUID
+BlGetApplicationIdentifier (
+    VOID
+    )
+
+/*++
+
+Routine Description:
+
+    Gets the boot application's identifier.
+
+Arguments:
+
+    None.
+
+Return Value:
+
+    Pointer to the identifier if successful.
+
+    NULL if unsuccessful.
+
+--*/
+
+{
+    if (!(BlpApplicationEntry.Attributes & BOOT_ENTRY_NO_IDENTIFIER) || BlpApplicationIdentifierSet) {
+        return &BlpApplicationEntry.Identifier;
+    } else {
+        return NULL;
+    }
+}
+
+NTSTATUS
+BlInitializeLibrary (
+    IN PBOOT_APPLICATION_PARAMETERS ApplicationParameters,
+    IN PBOOT_LIBRARY_PARAMETERS     LibraryParameters
+    )
+
+/*++
+
+Routine Description:
+
+    Initializes the boot library.
+
+Arguments:
+
+    ApplicationParameters - Pointer to the application parameters structure.
+
+    LibraryParameters - Pointer to the library parameters structure.
+
+Return Value:
+
+    STATUS_SUCCESS if successful.
+
+    Error code if unsuccessful.
+
+--*/
+
+{
+    if (!(LibraryParameters->Flags & BOOT_LIBRARY_FLAG_REINITIALIZE)) {
+        return InitializeLibrary(ApplicationParameters, LibraryParameters);
+    }
+
+    RtlCopyMemory(&BlpLibraryParameters, LibraryParameters, sizeof(BlpLibraryParameters));
+    if (!(LibraryParameters->Flags & BOOT_LIBRARY_FLAG_REINITIALIZE_ALL)) {
+        return STATUS_SUCCESS;
+    }
+
+    //
+    // TODO: Implement remaining functionality.
+    //
+
+    return STATUS_SUCCESS;
 }
