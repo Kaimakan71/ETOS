@@ -1,11 +1,14 @@
 # ETOS (Evolved Technology Operating System)
 ETOS is an operating system based on the Windows NT architecture, produced through clean-room reverse-engineering of official binaries. ETOS is not based on any existing source code, so contributors must use reverse-engineering software to replicate and improve upon the functionality found in official Windows binaries distributed by Microsoft.
 
-> NOTE: This repository only contains partial source code, and cannot produce a working executable. More code will be added gradually as it is reviewed and refined.
-
 ## Supported Devices
-Any x64 device with EFI firmware.
-i386 processors will be supported in the future.
+Any x64 device with EFI firmware. i386 processors will be supported in the future.
+
+## Building
+The ETOS build system uses Makefiles, and only works on UNIX-like systems (e.g. Linux, MacOS, *nix). To build the whole project, run `make` from the root directory. This will place binaries in the `build` directory by default, or any directory specified with `make BUILDDIR=<path>`.
+
+## Running
+To run ETOS, copy `${BUILDDIR}/bootmgr/bootmgfw.efi` to `/EFI/Microsoft/Boot/bootmgfw.efi` on an EFI system partition or execute `make run` to run ETOS in the QEMU emulator. Note that to run in QEMU, you must have built or downloaded an EDKII OVMF firmware binary.
 
 ## Common Terms and Abbreviations
 **i386**: The 32-bit x86 architecture, also known as IA-32. Includes the Intel i386 and all its 32-bit successors.

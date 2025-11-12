@@ -6,7 +6,7 @@
 APP ?= bootmgr
 BUILDDIR ?= build/$(APP)
 CFLAGS += -Iinc -I../sdk/inc/nt -I../sdk/inc/crt
-CFILES = lib/bootopt.c
+CFILES = $(addprefix lib/misc/,event.c option.c string.c) $(addprefix lib/mm/,mm.c mmmd.c) lib/bootlib.c
 ASFILES =
 LIBS = $(BUILDDIR)/../crt/crt.lib $(BUILDDIR)/../rtl/rtl.lib
 
@@ -15,13 +15,14 @@ CFILES += app/bootmgr/bootmgr.c
 endif
 
 ifeq ($(TARGET_ARCH),x64)
+CFILES += lib/x64/arch.c
 ASFILES += lib/x64/archasm.S
 endif
 
 ifeq ($(TARGET_FIRMWARE),efi)
 CFLAGS += -I../sdk/inc/efi -D_EFI
 LDFLAGS += /SUBSYSTEM:EFI_APPLICATION /ENTRY:EfiEntry
-CFILES += $(addprefix lib/efi/,eficon.c efidebug.c efierr.c efiwrap.c)
+CFILES += $(addprefix lib/efi/,eficon.c efidebug.c efierr.c efifw.c efiinit.c efiwrap.c)
 ifeq ($(APP),bootmgr)
 CFILES += app/bootmgr/efi/efientry.c
 EXEFILE = $(BUILDDIR)/bootmgfw.efi
