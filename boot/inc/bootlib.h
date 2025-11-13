@@ -460,9 +460,9 @@ typedef struct {
 //
 
 #define BOOT_ENTRY_NO_IDENTIFIER    0x00000001
-#define BOOT_ENTRY_OPTIONS_EXTERNAL 0x00000002
+#define BOOT_ENTRY_OPTIONS_INTERNAL 0x00000002
 #define BOOT_ENTRY_OS_LOADER        0x00000004
-#define BOOT_ENTRY_OPTIONS_INTERNAL 0x00000080
+#define BOOT_ENTRY_OPTIONS_EXTERNAL 0x00000080
 #define BOOT_ENTRY_NO_TRAP_VECTORS  0x00004000
 #define BOOT_ENTRY_UNKNOWN_8000     0x00008000
 
@@ -633,10 +633,31 @@ BlGetBootOptionListSize (
     );
 
 NTSTATUS
+BlMergeBootOptionLists (
+    IN     PBOOT_ENTRY_OPTION OptionsA,
+    IN     PBOOT_ENTRY_OPTION OptionsB,
+    IN     PVOID              Buffer,
+    IN OUT PULONG             BufferSize
+    );
+
+NTSTATUS
 BlGetBootOptionBoolean (
     IN  PBOOT_ENTRY_OPTION Options,
     IN  BCDE_DATA_TYPE     Type,
     OUT PBOOLEAN           Value
+    );
+
+NTSTATUS
+BlAppendBootOptions (
+    IN PBOOT_APPLICATION_ENTRY BootEntry,
+    IN PBOOT_ENTRY_OPTION      Options
+    );
+
+NTSTATUS
+BlAppendBootOptionString (
+    IN PBOOT_APPLICATION_ENTRY BootEntry,
+    IN BCDE_DATA_TYPE          Type,
+    IN PWSTR                   String
     );
 
 //
@@ -677,6 +698,16 @@ BlpMmInitialize (
     IN PMEMORY_INFO             MemoryInfo,
     IN ULONG                    TranslationType,
     IN PBOOT_LIBRARY_PARAMETERS LibraryParameters
+    );
+
+PVOID
+BlMmAllocateHeap (
+    IN ULONG_PTR Size
+    );
+
+NTSTATUS
+BlMmFreeHeap (
+    IN PVOID Pointer
     );
 
 NTSTATUS

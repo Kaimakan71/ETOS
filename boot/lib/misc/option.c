@@ -15,6 +15,7 @@ Abstract:
 --*/
 
 #include "bootlib.h"
+#include <wchar.h>
 
 PBOOT_OPTION_CALLBACKS BlpBootOptionCallbacks = NULL;
 ULONGLONG BlpBootOptionCallbackCookie;
@@ -153,6 +154,94 @@ Return Value:
 }
 
 NTSTATUS
+BlMergeBootOptionLists (
+    IN     PBOOT_ENTRY_OPTION OptionsA,
+    IN     PBOOT_ENTRY_OPTION OptionsB,
+    IN     PVOID              Buffer,
+    IN OUT PULONG             BufferSize
+    )
+
+/*++
+
+Routine Description:
+
+    Merges two boot option lists.
+
+Arguments:
+
+    OptionsA - The first list.
+
+    OptionsB - The second list.
+
+    Buffer - Pointer to a buffer to store the new list in.
+
+    BufferSize - Pointer to the size of the buffer (0 to get required size).
+
+Return Value:
+
+    STATUS_SUCCESS if successful.
+
+    STATUS_INTEGER_OVERFLOW if an overflow occurs.
+
+    STATUS_BUFFER_TOO_SMALL if BufferSize is too small.
+
+--*/
+
+{
+    ULONG SizeA, SizeB, TotalSize, NextOptionOffset, RealOffset;
+    PBOOT_ENTRY_OPTION Option;
+
+    //
+    // Calculate the total size of the combined list.
+    //
+    SizeA = BlGetBootOptionListSize(OptionsA);
+    SizeB = BlGetBootOptionListSize(OptionsB);
+    TotalSize = SizeA + SizeB;
+    if (TotalSize < SizeA) {
+        return STATUS_INTEGER_OVERFLOW;
+    }
+
+    //
+    // Require enough space to hold the whole list.
+    //
+    if (*BufferSize < TotalSize) {
+        *BufferSize = TotalSize;
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    //
+    // Copy the option data.
+    //
+    RtlMoveMemory(Buffer, OptionsA, SizeA);
+    RtlMoveMemory((PUCHAR)Buffer + SizeA, OptionsB, SizeB);
+
+    //
+    // Seek to the end of the first list.
+    //
+    NextOptionOffset = 0;
+    do {
+        Option = (PBOOT_ENTRY_OPTION)((PUCHAR)Buffer + NextOptionOffset);
+        NextOptionOffset = Option->NextOptionOffset;
+    } while (NextOptionOffset != 0);
+
+    //
+    // Fix the offsets in the second list.
+    //
+    do {
+        RealOffset = NextOptionOffset + SizeA;
+        if (RealOffset < NextOptionOffset) {
+            return STATUS_INTEGER_OVERFLOW;
+        }
+
+        Option->NextOptionOffset = RealOffset;
+        Option = (PBOOT_ENTRY_OPTION)((PUCHAR)Buffer + RealOffset);
+        NextOptionOffset = Option->NextOptionOffset;
+    } while (NextOptionOffset != 0);
+
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS
 BlGetBootOptionBoolean (
     IN  PBOOT_ENTRY_OPTION Options,
     IN  BCDE_DATA_TYPE     Type,
@@ -221,5 +310,163 @@ Return Value:
         *Value = Data;
     }
 
+    return Status;
+}
+
+NTSTATUS
+BlAppendBootOptions (
+    IN PBOOT_APPLICATION_ENTRY BootEntry,
+    IN PBOOT_ENTRY_OPTION      Options
+    )
+
+/*++
+
+Routine Description:
+
+    Appends additional options to a boot entry's option list.
+
+Arguments:
+
+    BootEntry - Pointer to the boot entry.
+
+    Options - Pointer to the options to append.
+
+Return Value:
+
+    STATUS_SUCCESS if successful.
+
+    STATUS_UNSUCCESSFUL if buffer size probing fails.
+
+    STATUS_NO_MEMORY if buffer allocation fails.
+
+    Any other error code returned by BlMergeBootOptionLists.
+
+--*/
+
+{
+    NTSTATUS Status;
+    ULONG BufferSize;
+    PVOID Buffer;
+
+    //
+    // Get required buffer size.
+    //
+    BufferSize = 0;
+    Status = BlMergeBootOptionLists(BootEntry->Options, Options, NULL, &BufferSize);
+    if (NT_SUCCESS(Status)) {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    //
+    // Abort if a different error occurred.
+    //
+    if (Status != STATUS_BUFFER_TOO_SMALL) {
+        return Status;
+    }
+
+    Buffer = BlMmAllocateHeap(BufferSize);
+    if (Buffer == NULL) {
+        return STATUS_NO_MEMORY;
+    }
+
+    Status = BlMergeBootOptionLists(BootEntry->Options, Options, Buffer, &BufferSize);
+    if (!NT_SUCCESS(Status)) {
+        BlMmFreeHeap(Buffer);
+        return Status;
+    }
+
+    //
+    // Free old options.
+    //
+    if (BootEntry->Attributes & BOOT_ENTRY_OPTIONS_INTERNAL) {
+        BlMmFreeHeap(BootEntry->Options);
+    }
+
+    //
+    // Use new options.
+    //
+    BootEntry->Options = Buffer;
+    BootEntry->Attributes &= ~BOOT_ENTRY_OPTIONS_EXTERNAL;
+    BootEntry->Attributes |= BOOT_ENTRY_OPTIONS_INTERNAL;
+
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS
+BlAppendBootOptionString (
+    IN PBOOT_APPLICATION_ENTRY BootEntry,
+    IN BCDE_DATA_TYPE          Type,
+    IN PWSTR                   String
+    )
+
+/*++
+
+Routine Description:
+
+    Appends a string option to a boot entry's option list.
+
+Arguments:
+
+    BootEntry - Pointer to the boot entry.
+
+    Type - The type to assign the option.
+
+    String - The string to use as the option's data.
+
+Return Value:
+
+    STATUS_SUCCESS if successful.
+
+    STATUS_NO_MEMORY if buffer allocation fails.
+
+    Any other error code returned by BlAppendBootOptions.
+
+--*/
+
+{
+    NTSTATUS Status;
+    size_t StringSize;
+    ULONG DataSize, TotalSize;
+    PBOOT_ENTRY_OPTION Option;
+
+    //
+    // Find value size, in bytes.
+    //
+    StringSize = wcslen(String) * sizeof(WCHAR);
+    if (StringSize > MAXULONG) {
+        return STATUS_INTEGER_OVERFLOW;
+    }
+
+    //
+    // Account for NULL terminator and convert to ULONG.
+    //
+    DataSize = StringSize + sizeof(UNICODE_NULL);
+    if (DataSize < StringSize) {
+        return STATUS_INTEGER_OVERFLOW;
+    }
+
+    //
+    // Allocate temporary buffer for option.
+    //
+    TotalSize = sizeof(BOOT_ENTRY_OPTION) + DataSize;
+    Option = BlMmAllocateHeap(TotalSize);
+    if (Option == NULL) {
+        return STATUS_NO_MEMORY;
+    }
+
+    //
+    // Fill in option structure.
+    //
+    RtlZeroMemory(Option, TotalSize);
+    Option->Type = Type;
+    Option->DataOffset = sizeof(BOOT_ENTRY_OPTION);
+    Option->DataSize = DataSize;
+    wcscpy_s((PWSTR)((PUCHAR)Option + Option->DataOffset), Option->DataSize / sizeof(WCHAR), String);
+
+    //
+    // Append option to list and free allocated memory.
+    //
+    Status = BlAppendBootOptions(BootEntry, Option);
+    BlMmFreeHeap(Option);
     return Status;
 }
