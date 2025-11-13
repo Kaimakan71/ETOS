@@ -771,7 +771,7 @@ Return Value:
     if (DevicePathType(DeviceNode) == ACPI_DEVICE_PATH) {
         AcpiHidNode = (ACPI_HID_DEVICE_PATH *)DeviceNode;
         if (AcpiHidNode->HID != EISA_PNP_ID(0x604) && AcpiHidNode->HID != EISA_PNP_ID(0x700)) {
-            EfiDebugTrace(L"unrecognized ACPI device (HID %x)\r\n", AcpiHidNode->HID);
+            EfiDebugTrace(L"unrecognized ACPI device (HID 0x%x)\r\n", AcpiHidNode->HID);
             return STATUS_UNSUCCESSFUL;
         }
 
@@ -828,7 +828,7 @@ Return Value:
     // Only media devices should be left now.
     //
     if (DevicePathType(DeviceNode) != MEDIA_DEVICE_PATH) {
-        EfiDebugTrace(L"unsupported boot device (type %x)\r\n", DevicePathType(DeviceNode));
+        EfiDebugTrace(L"unsupported boot device (type 0x%x)\r\n", DevicePathType(DeviceNode));
         return STATUS_UNSUCCESSFUL;
     }
 
@@ -875,7 +875,7 @@ Return Value:
         BootDevice->BlockDevice.Cdrom.DriveNumber = 0;
         break;
     default:
-        EfiDebugTrace(L"unsupported boot device (media subtype %x)\r\n", DevicePathSubType(DeviceNode));
+        EfiDebugTrace(L"unsupported boot device (media subtype 0x%x)\r\n", DevicePathSubType(DeviceNode));
         return STATUS_UNSUCCESSFUL;
     }
 
@@ -1207,7 +1207,7 @@ Return Value:
     // Detect buffer overflow.
     //
     if (ScratchUsed > sizeof(EfiInitScratch)) {
-        EfiDebugTrace(L"EfiInitScratch buffer overflow (%x/%x bytes used)\r\n", ScratchUsed, sizeof(EfiInitScratch));
+        EfiDebugTrace(L"EfiInitScratch buffer overflow (0x%x/0x%x bytes used)\r\n", ScratchUsed, sizeof(EfiInitScratch));
         return NULL;
     }
 

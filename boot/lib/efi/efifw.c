@@ -174,7 +174,7 @@ Return Value:
         //
         Status = EfiOpenProtocol(EfiST->ConsoleInHandle, &EfiSimpleTextInputExProtocol, (VOID **)&EfiConInEx);
         if (!NT_SUCCESS(Status)) {
-            DebugError(L"Failed to open extended simple text input protocol (Status=%x)\r\n", Status);
+            DebugError(L"Failed to open extended simple text input protocol (Status=0x%x)\r\n", Status);
             return Status;
         }
     } else if (EnableNumLock) {
