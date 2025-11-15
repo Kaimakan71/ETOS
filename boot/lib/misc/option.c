@@ -242,10 +242,151 @@ Return Value:
 }
 
 NTSTATUS
+BlGetBootOptionDevice (
+    IN  PBOOT_ENTRY_OPTION Options,
+    IN  BCDE_DATA_TYPE     Type,
+    OUT PDEVICE_IDENTIFIER *IdentifierOut,
+    OUT PBOOT_ENTRY_OPTION *AdditionalOptionsOut OPTIONAL
+    )
+
+/*++
+
+Routine Description:
+
+    Retrieves a boot option of type Type as a device.
+
+Arguments:
+
+    Options - Pointer to the boot option list.
+
+    Type - The type of option to search for.
+
+    Identifier - Receives a pointer to a buffer containing the device's identifier.
+
+    AdditionalOptions - Receives a pointer to a buffer containing the device's additional options.
+
+Return Value:
+
+    STATUS_SUCCESS if successful.
+
+    STATUS_INVALID_PARAMETER if Type is not of format BCDE_FORAMT_DEVICE.
+
+    STATUS_NOT_FOUND if no matching option could be found.
+
+    STATUS_NO_MEMORY if memory allocation fails.
+
+    Any other status value returned by the BCD filter callback.
+
+--*/
+
+{
+    NTSTATUS Status;
+    PBOOT_ENTRY_OPTION Option, OriginalAdditionalOptions, DefaultAdditionalOptions, SelectedAdditionalOptions;
+    PDEVICE_IDENTIFIER OriginalIdentifier, DefaultIdentifier, SelectedIdentifier;
+    ULONG OriginalAdditionalOptionsSize;
+
+    //
+    // Validate the requested option type.
+    //
+    if ((Type & BCDE_FORMAT_MASK) != BCDE_FORMAT_DEVICE) {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    //
+    // Find an option of the requested type.
+    //
+    Option = BcdUtilGetBootOption(Options, Type);
+    if (Option != NULL) {
+        Status = STATUS_SUCCESS;
+    } else {
+        Status = STATUS_NOT_FOUND;
+        DefaultIdentifier = NULL;
+        DefaultAdditionalOptions = NULL;
+        goto RunFilter;
+    }
+
+    //
+    // Copy the device's identifier.
+    //
+    OriginalIdentifier = &((PBCDE_DEVICE)((ULONG_PTR)Option + Option->DataOffset))->Identifier;
+    DefaultIdentifier = BlMmAllocateHeap(OriginalIdentifier->Size);
+    if (DefaultIdentifier == NULL) {
+        return STATUS_NO_MEMORY;
+    }
+    RtlMoveMemory(DefaultIdentifier, OriginalIdentifier, OriginalIdentifier->Size);
+
+    //
+    // Continue if additional options were not requested or are not available.
+    //
+    if (AdditionalOptionsOut == NULL || Option->AdditionalOptionsOffset == 0) {
+        DefaultAdditionalOptions = NULL;
+        goto RunFilter;
+    }
+
+    //
+    // Copy the additional options list.
+    //
+    OriginalAdditionalOptions = (PBOOT_ENTRY_OPTION)((ULONG_PTR)Option + Option->AdditionalOptionsOffset);
+    OriginalAdditionalOptionsSize = BlGetBootOptionListSize(OriginalAdditionalOptions);
+    DefaultAdditionalOptions = BlMmAllocateHeap(OriginalAdditionalOptionsSize);
+    if (DefaultAdditionalOptions == NULL) {
+        BlMmFreeHeap(DefaultIdentifier);
+        return STATUS_NO_MEMORY;
+    }
+    RtlMoveMemory(DefaultAdditionalOptions, OriginalAdditionalOptions, OriginalAdditionalOptionsSize);
+
+RunFilter:
+    SelectedIdentifier = DefaultIdentifier;
+    SelectedAdditionalOptions = DefaultAdditionalOptions;
+
+    //
+    // Pass through BCD filter callback if registered.
+    //
+    if (BlpBootOptionCallbacks != NULL && BlpBootOptionCallbacks->Device != NULL) {
+        Status = BlpBootOptionCallbacks->Device(
+            BlpBootOptionCallbackCookie,
+            Status,
+            0,
+            BlGetApplicationIdentifier(),
+            Type,
+            &SelectedIdentifier,
+            &SelectedAdditionalOptions
+        );
+    }
+
+    //
+    // Free allocated memory.
+    //
+
+    if (SelectedAdditionalOptions != DefaultAdditionalOptions && DefaultAdditionalOptions != NULL) {
+        BlMmFreeHeap(DefaultAdditionalOptions);
+        DefaultAdditionalOptions = NULL;
+    }
+
+    if (SelectedIdentifier != DefaultIdentifier && DefaultIdentifier != NULL) {
+        BlMmFreeHeap(DefaultIdentifier);
+        DefaultIdentifier = NULL;
+    }
+
+    //
+    // Return results.
+    //
+    if (NT_SUCCESS(Status)) {
+        if (AdditionalOptionsOut != NULL) {
+            *AdditionalOptionsOut = SelectedAdditionalOptions;
+        }
+
+        *IdentifierOut = SelectedIdentifier;
+    }
+
+    return Status;
+}
+
+NTSTATUS
 BlGetBootOptionBoolean (
     IN  PBOOT_ENTRY_OPTION Options,
     IN  BCDE_DATA_TYPE     Type,
-    OUT PBOOLEAN           Value
+    OUT PBOOLEAN           ValueOut
     )
 
 /*++
@@ -260,33 +401,39 @@ Arguments:
 
     Type - The type of option to search for.
 
-    Value - Pointer to a BOOLEAN that receives the option's value.
+    Value - Receives the option's value.
 
 Return Value:
 
     STATUS_SUCCESS if successful.
 
-    STATUS_INVALID_PARAMETER if Type is not of format BCDE_FORAMT_BOOLEAN.
+    STATUS_INVALID_PARAMETER if Type is not of format BCDE_FORMAT_BOOLEAN.
 
     STATUS_NOT_FOUND if no matching option could be found.
 
-    Any other status value returned by the callback.
+    Any other status value returned by the BCD filter callback.
 
 --*/
 
 {
     NTSTATUS Status;
     PBOOT_ENTRY_OPTION Option;
-    BOOLEAN Data;
+    BOOLEAN Value;
 
+    //
+    // Validate the requested option type.
+    //
     if ((Type & BCDE_FORMAT_MASK) != BCDE_FORMAT_BOOLEAN) {
         return STATUS_INVALID_PARAMETER;
     }
 
+    //
+    // Find an option of the requested type.
+    //
     Option = BcdUtilGetBootOption(Options, Type);
     if (Option != NULL) {
         Status = STATUS_SUCCESS;
-        Data = *(PBOOLEAN)((PUCHAR)Option + Option->DataOffset);
+        Value = *(PBOOLEAN)((PUCHAR)Option + Option->DataOffset);
     } else {
         Status = STATUS_NOT_FOUND;
     }
@@ -301,13 +448,15 @@ Return Value:
             0,
             BlGetApplicationIdentifier(),
             Type,
-            NULL,
-            &Data
+            &Value
         );
     }
 
+    //
+    // Return result.
+    //
     if (NT_SUCCESS(Status)) {
-        *Value = Data;
+        *ValueOut = Value;
     }
 
     return Status;
