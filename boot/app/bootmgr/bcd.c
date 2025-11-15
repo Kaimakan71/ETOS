@@ -68,6 +68,7 @@ Return Value:
     //
     // TODO: Finish implementing this routine.
     //
+    *DataStoreHandle = (PVOID)0xca7f00d;
 
     BlMmFreeHeap(FileIdentifier);
     return STATUS_SUCCESS;
@@ -173,6 +174,37 @@ Success:
     *DeviceIdentifierOut = DeviceIdentifier;
     *FilePathOut = FilePath;
     *FilePathFoundOut = FilePathFound;
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS
+BmCloseDataStore (
+    HANDLE DataStoreHandle
+    )
+
+/*++
+
+Routine Description:
+
+    Closes the boot data store (aka BCD).
+
+Arguments:
+
+    DataStoreHandle - The data store handle.
+
+Return Value:
+
+    STATUS_SUCCESS.
+
+--*/
+
+{
+    (VOID) DataStoreHandle;
+
+    //
+    // TODO: Implement this routine.
+    //
+
     return STATUS_SUCCESS;
 }
 

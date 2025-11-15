@@ -50,6 +50,11 @@ Return Value:
     HANDLE DataStoreHandle; 
     PRETURN_DATA ReturnData;
 
+    //
+    // Initialize state.
+    //
+    DataStoreHandle = NULL;
+
 #if defined(__x86_64__) || defined(__i386__)
     ApplicationStartTime = __rdtsc();
     PostTime = ApplicationStartTime;
@@ -104,6 +109,11 @@ Return Value:
     }
 
 Exit:
+    if (DataStoreHandle != NULL) {
+        DebugInfo(L"Closing BCD...\r\n");
+        BmCloseDataStore(DataStoreHandle);
+    }
+
     ReturnData = (PRETURN_DATA)((ULONG_PTR)ApplicationParameters + ApplicationParameters->ReturnDataOffset);
     ReturnData->Version = RETURN_DATA_VERSION;
     ReturnData->Status = Status;

@@ -52,6 +52,11 @@ BmOpenDataStore (
     PHANDLE DataStoreHandle
     );
 
+NTSTATUS
+BmCloseDataStore (
+    HANDLE DataStoreHandle
+    );
+
 //
 // Boot entry services.
 //
