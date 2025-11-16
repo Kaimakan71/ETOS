@@ -19,26 +19,24 @@ Abstract:
 static
 size_t
 print_hex (
-    wchar_t *wcs,
+    wchar_t *dest,
     size_t maxlen,
     unsigned int num
     )
 
 {
-    wchar_t *dest;
     size_t n;
     int shift;
-    unsigned int x;
+    unsigned int digit;
 
-    dest = wcs;
     n = 0;
     shift = 28;
     while (n < maxlen && shift >= 0) {
-        x = (num >> shift) & 0xf;
-        if (x >= 0xa) {
-            *dest = 'a' + (x - 0xa);
+        digit = (num >> shift) & 0xf;
+        if (digit >= 0xa) {
+            *dest = 'a' + (digit - 0xa);
         } else {
-            *dest = '0' + x;
+            *dest = '0' + digit;
         }
 
         dest++;
@@ -52,31 +50,28 @@ print_hex (
 static
 size_t
 print_dec (
-    wchar_t *wcs,
+    wchar_t *dest,
     size_t maxlen,
     unsigned int num
     )
 
 {
-    wchar_t *dest;
     size_t n;
-    unsigned int div, pad;
-    char ch;
+    unsigned int div, pad, digit;
 
-    dest = wcs;
     n = 0;
     div = 1000000000;
     pad = 1;
     while (n < maxlen && div > 0) {
-        ch = '0' + (num / div);
+        digit = num / div;
         num %= div;
 
-        if (ch != '0') {
+        if (digit != 0) {
             pad = 0;
         }
 
         if (!pad || div == 1) {
-            *dest++ = ch;
+            *dest++ = '0' + digit;
             n++;
         }
 
@@ -89,7 +84,7 @@ print_dec (
 static
 size_t
 print_str (
-    wchar_t *wcs,
+    wchar_t *dest,
     size_t maxlen,
     wchar_t *str
     )
@@ -98,7 +93,7 @@ print_str (
     size_t len;
 
     len = wcsnlen(str, maxlen);
-    wmemcpy(wcs, str, len);
+    wmemcpy(dest, str, len);
 
     return len;
 }
@@ -126,7 +121,7 @@ vswprintf_s (
     dest = wcs;
     total = 0;
     while (total < maxlen && *format != '\0') {
-        if (*format != '%') {
+        if (*format != L'%') {
             *dest++ = *format++;
             total++;
             continue;
@@ -152,7 +147,7 @@ vswprintf_s (
             total += len;
             format++;
             break;
-        case '\0':
+        case L'\0':
             break;
         case '%':
         default:
@@ -162,6 +157,6 @@ vswprintf_s (
         }
     }
 
-    wcs[total] = '\0';
+    wcs[total] = L'\0';
     return (int)total;
 }

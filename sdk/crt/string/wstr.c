@@ -10,7 +10,7 @@ Module Name:
 
 Abstract:
 
-    Wide string manipulation routines.
+    Wide-character string manipulation routines.
 
 --*/
 
@@ -18,35 +18,35 @@ Abstract:
 
 size_t
 wcslen (
-    const wchar_t *str
+    const wchar_t *s
     )
 
 {
     const wchar_t *ptr;
 
-    ptr = str;
-    while (*ptr) {
+    ptr = s;
+    while (*ptr != L'\0') {
         ptr++;
     }
 
-    return ptr - str;
+    return ptr - s;
 }
 
 size_t
 wcsnlen (
-    const wchar_t *str,
+    const wchar_t *s,
     size_t maxlen
     )
 
 {
     const wchar_t *ptr;
 
-    ptr = str;
-    while (maxlen-- && *ptr) {
+    ptr = s;
+    while (maxlen-- && *ptr != L'\0') {
         ptr++;
     }
 
-    return ptr - str;
+    return ptr - s;
 }
 
 int
@@ -57,7 +57,7 @@ wcscmp (
 
 {
     while (*s1 == *s2) {
-        if (*s1 == '\0') {
+        if (*s1 == L'\0') {
             return 0;
         }
 
@@ -81,7 +81,7 @@ wcsncmp (
             return *s1 - *s2;
         }
 
-        if (*s1 == '\0') {
+        if (*s1 == L'\0') {
             return 0;
         }
 
@@ -101,7 +101,7 @@ wcschr (
 
 {
     while (*wcs != wc) {
-        if (!*wcs) {
+        if (*wcs == L'\0') {
             return NULL;
         }
 
@@ -120,7 +120,7 @@ wcsstr (
 {
     const wchar_t *ptr = haystack;
 
-    if (!*needle) {
+    if (*needle == L'\0') {
         return (wchar_t *)haystack;
     }
 
@@ -144,7 +144,7 @@ wcscpy_s (
     for (size_t i = 0; i < maxlen; i++, src++) {
         dest[i] = *src;
 
-        if (!*src) {
+        if (*src == L'\0') {
             break;
         }
     }
@@ -163,7 +163,7 @@ wcscat_s (
     for (size_t i = wcsnlen(dest, maxlen); i < maxlen; i++, src++) {
         dest[i] = *src;
 
-        if (!*src) {
+        if (*src == L'\0') {
             break;
         }
     }

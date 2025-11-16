@@ -18,35 +18,35 @@ Abstract:
 
 size_t
 strlen (
-    const char *str
+    const char *s
     )
 
 {
     const char *ptr;
 
-    ptr = str;
-    while (*ptr) {
+    ptr = s;
+    while (*ptr != '\0') {
         ptr++;
     }
 
-    return ptr - str;
+    return ptr - s;
 }
 
 size_t
 strnlen (
-    const char *str,
+    const char *s,
     size_t maxlen
     )
 
 {
     const char *ptr;
 
-    ptr = str;
-    while (maxlen-- && *ptr) {
+    ptr = s;
+    while (maxlen-- && *ptr != '\0') {
         ptr++;
     }
 
-    return ptr - str;
+    return ptr - s;
 }
 
 int
@@ -101,7 +101,7 @@ strchr (
 
 {
     while (*s != (char)c) {
-        if (!*s) {
+        if (*s == '\0') {
             return NULL;
         }
 
@@ -120,7 +120,7 @@ strstr (
 {
     const char *ptr = haystack;
 
-    if (!*needle) {
+    if (*needle == '\0') {
         return (char *)haystack;
     }
 

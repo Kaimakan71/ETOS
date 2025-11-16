@@ -18,17 +18,17 @@ Abstract:
 
 void *
 memset (
-    void *dest,
+    void *s,
     int c,
-    size_t count
+    size_t n
     )
 
 {
-    void *ptr = dest;
+    void *ptr = s;
 
-    while (count--) {
-        *(char *)dest = (char)c;
-        dest = (char *)dest + 1;
+    while (n--) {
+        *(char *)s = (char)c;
+        s = (char *)s + 1;
     }
 
     return ptr;
@@ -38,13 +38,13 @@ void *
 memcpy (
     void *dest,
     const void *src,
-    size_t count
+    size_t n
     )
 
 {
     void *ptr = dest;
 
-    while (count--) {
+    while (n--) {
         *(char *)dest = *(char *)src;
         dest = (char *)dest + 1;
         src = (char *)src + 1;
@@ -57,25 +57,25 @@ void *
 memmove (
     void *dest,
     const void *src,
-    size_t count
+    size_t n
     )
 
 {
     void *ptr = dest;
 
     /* Check for overlap */
-    if (src > dest || ((char *)src + count) < (char *)dest) {
+    if (src > dest || ((char *)src + n) < (char *)dest) {
         /* Low-to-high copy */
-        return memcpy(dest, src, count);
+        return memcpy(dest, src, n);
     }
 
     /* High-to-low copy */
-    dest = (char *)dest + count - 1;
-    src = (char *)src + count - 1;
-    while (count--) {
-        *(char *)dest = *(char *)src;
+    dest = (char *)dest + n;
+    src = (char *)src + n;
+    while (n--) {
         dest = (char *)dest - 1;
         src = (char *)src - 1;
+        *(char *)dest = *(char *)src;
     }
 
     return ptr;

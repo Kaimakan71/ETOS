@@ -10,7 +10,7 @@ Module Name:
 
 Abstract:
 
-    Wide memory manipulation routines.
+    Wide-character memory manipulation routines.
 
 --*/
 
@@ -18,16 +18,16 @@ Abstract:
 
 wchar_t *
 wmemset (
-    wchar_t *dest,
-    wchar_t c,
-    size_t count
+    wchar_t *wcs,
+    wchar_t wc,
+    size_t n
     )
 
 {
-    wchar_t *ptr = dest;
+    wchar_t *ptr = wcs;
 
-    while (count--) {
-        *dest++ = c;
+    while (n--) {
+        *wcs++ = wc;
     }
 
     return ptr;
@@ -37,13 +37,13 @@ wchar_t *
 wmemcpy (
     wchar_t *dest,
     const wchar_t *src,
-    size_t count
+    size_t n
     )
 
 {
     wchar_t *ptr = dest;
 
-    while (count--) {
+    while (n--) {
         *dest++ = *src++;
     }
 
@@ -54,25 +54,25 @@ wchar_t *
 wmemmove (
     wchar_t *dest,
     const wchar_t *src,
-    size_t count
+    size_t n
     )
 
 {
     wchar_t *ptr = dest;
 
     /* Check for overlap */
-    if (src > dest || ((wchar_t *)src + count) < (wchar_t *)dest) {
+    if (src > dest || ((wchar_t *)src + n) < (wchar_t *)dest) {
         /* Low-to-high copy */
-        return wmemcpy(dest, src, count);
+        return wmemcpy(dest, src, n);
     }
 
     /* High-to-low copy */
-    dest = (wchar_t *)dest + count - 1;
-    src = (wchar_t *)src + count - 1;
-    while (count--) {
-        *(wchar_t *)dest = *(wchar_t *)src;
+    dest = (wchar_t *)dest + n;
+    src = (wchar_t *)src + n;
+    while (n--) {
         dest = (wchar_t *)dest - 1;
         src = (wchar_t *)src - 1;
+        *(wchar_t *)dest = *(wchar_t *)src;
     }
 
     return ptr;
