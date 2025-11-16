@@ -139,33 +139,51 @@ Return Value:
 --*/
 
 {
-    ULONG TotalLength;
+    ULONG ConvertedSize, Count;
+    PWSTR Destination;
+    PSTR Source;
 
-    TotalLength = (SourceString->Length * sizeof(WCHAR)) + sizeof(UNICODE_NULL);
-    if (TotalLength > UNICODE_STRING_MAX_BYTES) {
+    //
+    // Validate total length.
+    //
+    ConvertedSize = (SourceString->Length * sizeof(WCHAR)) + sizeof(UNICODE_NULL);
+    if (ConvertedSize > UNICODE_STRING_MAX_BYTES) {
         return STATUS_INVALID_PARAMETER_2;
     }
 
+    //
+    // Set up destination buffer.
+    //
     if (AllocateDestinationString) {
-        DestinationString->MaximumLength = TotalLength;
-
         //
         // TODO: Implement buffer allocation.
         //
+        DestinationString->MaximumLength = 0;
         DestinationString->Buffer = NULL;
 
         return STATUS_NOT_IMPLEMENTED;
     } else {
-        if (TotalLength > DestinationString->MaximumLength) {
+        if (ConvertedSize > DestinationString->MaximumLength) {
             return STATUS_BUFFER_OVERFLOW;
         }
     }
 
-    DestinationString->Length = TotalLength - sizeof(UNICODE_NULL);
+    //
+    // Copy and convert data.
+    //
+    DestinationString->Length = ConvertedSize - sizeof(UNICODE_NULL);
     if (SourceString->Length > 0) {
-        RtlCopyMemory(DestinationString->Buffer, SourceString->Buffer, DestinationString->Length);
+        Destination = DestinationString->Buffer;
+        Source = SourceString->Buffer;
+        Count = SourceString->Length;
+        while (Count--) {
+            *Destination++ = (WCHAR)*Source++;
+        }
     }
 
+    //
+    // Terminate destination string.
+    //
     if (DestinationString->Length < DestinationString->MaximumLength) {
         DestinationString->Buffer[SourceString->Length] = UNICODE_NULL;
     }

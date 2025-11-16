@@ -22,15 +22,22 @@ Abstract:
 #include <string.h>
 
 //
-// Memory operations.
+// Memory services.
 //
-#define RtlMoveMemory(Destination, Source, Length) memmove((Destination), (Source), (Length))
-#define RtlCopyMemory(Destination, Source, Length) memcpy((Destination), (Source), (Length))
-#define RtlFillMemory(Destination, Length, Fill)   memset((Destination), (Fill), (Length))
-#define RtlZeroMemory(Destination, Length)         memset((Destination), 0, (Length))
+#define RtlEqualMemory(Destination, Source, Length) (memcmp((Destination), (Source), (Length)) == 0)
+#define RtlMoveMemory(Destination, Source, Length)  memmove((Destination), (Source), (Length))
+#define RtlCopyMemory(Destination, Source, Length)  memcpy((Destination), (Source), (Length))
+#define RtlFillMemory(Destination, Length, Fill)    memset((Destination), (Fill), (Length))
+#define RtlZeroMemory(Destination, Length)          memset((Destination), 0, (Length))
 
-FORCEINLINE
+//
+// Doubly-linked list services.
+//
+
+#define IsListEmpty(Head) ((Head)->Flink == (Head))
+
 VOID
+FORCEINLINE
 InitializeListHead (
     IN PLIST_ENTRY Head
     )
@@ -56,8 +63,8 @@ Return Value:
     Head->Flink = Head;
 }
 
-FORCEINLINE
 VOID
+FORCEINLINE
 InsertHeadList (
     IN PLIST_ENTRY Head,
     IN PLIST_ENTRY Entry
@@ -80,14 +87,17 @@ Return Value:
 --*/
 
 {
-    Entry->Flink = Head->Flink;
+    PLIST_ENTRY Flink;
+
+    Flink = Head->Flink;
+    Entry->Flink = Flink;
     Entry->Blink = Head;
-    Head->Flink->Blink = Entry;
+    Flink->Blink = Entry;
     Head->Flink = Entry;
 }
 
-FORCEINLINE
 VOID
+FORCEINLINE
 InsertTailList (
     IN PLIST_ENTRY Head,
     IN PLIST_ENTRY Entry
@@ -110,14 +120,17 @@ Return Value:
 --*/
 
 {
-    Entry->Blink = Head->Blink;
+    PLIST_ENTRY Blink;
+
+    Blink = Head->Blink;
     Entry->Flink = Head;
-    Head->Blink->Flink = Entry;
+    Entry->Blink = Blink;
+    Blink->Flink = Entry;
     Head->Blink = Entry;
 }
 
-FORCEINLINE
 BOOLEAN
+FORCEINLINE
 RemoveEntryList (
     IN PLIST_ENTRY Entry
     )
@@ -141,56 +154,80 @@ Return Value:
 --*/
 
 {
-    PLIST_ENTRY Blink, Flink;
+    PLIST_ENTRY Flink, Blink;
 
-    Blink = Entry->Blink;
     Flink = Entry->Flink;
+    Blink = Entry->Blink;
     Blink->Flink = Flink;
     Flink->Blink = Blink;
 
     return (BOOLEAN)(Flink == Blink);
 }
 
-#define ULONG_ERROR 0xFFFFFFFFUL
-
+PLIST_ENTRY
 FORCEINLINE
-NTSTATUS
-RtlULongSub (
-   IN     ULONG  ulMinuend,
-   IN     ULONG  ulSubtrahend,
-   IN OUT PULONG pulResult
-   )
+RemoveHeadList (
+    IN PLIST_ENTRY Head
+    )
 
 /*++
 
 Routine Description:
 
-    Calculates the difference of two ULONG values.
+    Removes the first entry from a list.
 
 Arguments:
 
-    ulMinuend - The value to subtract ulSubtrahend from.
-
-    ulSubtrahend - The value to subtract from ulMinuend.
-
-    pulResult - Pointer to a ULONG to store the difference in.
+    Head - Pointer to the list's head.
 
 Return Value:
 
-    STATUS_SUCCESS if successful.
-
-    STATUS_INTEGER_OVERFLOW if unsuccessful.
+    Pointer to the removed entry.
 
 --*/
 
 {
-    if (ulMinuend >= ulSubtrahend) {
-        *pulResult = ulMinuend - ulSubtrahend;
-        return STATUS_SUCCESS;
-    }
+    PLIST_ENTRY Entry, Flink;
 
-    *pulResult = ULONG_ERROR;
-    return STATUS_INTEGER_OVERFLOW;
+    Entry = Head->Flink;
+    Flink = Entry->Flink;
+    Head->Flink = Flink;
+    Flink->Blink = Head;
+
+    return Entry;
+}
+
+PLIST_ENTRY
+FORCEINLINE
+RemoveTailList (
+    IN PLIST_ENTRY Head
+    )
+
+/*++
+
+Routine Description:
+
+    Removes the last entry from a list.
+
+Arguments:
+
+    Head - Pointer to the list's head.
+
+Return Value:
+
+    Pointer to the removed entry.
+
+--*/
+
+{
+    PLIST_ENTRY Entry, Blink;
+
+    Entry = Head->Blink;
+    Blink = Entry->Blink;
+    Head->Blink = Blink;
+    Blink->Flink = Head;
+
+    return Entry;
 }
 
 VOID

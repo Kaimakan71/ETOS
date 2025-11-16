@@ -34,11 +34,11 @@ Routine Description:
 
 Arguments:
 
-    Buffer - The source string to parse.
+    Buffer - Pointer to the source string to parse.
 
     MaximumLength - The length of the source string.
 
-    Format - The format of the source string.
+    Format - Pointer to the format of the source string.
 
     ... - Pointers to data destinations.
 
@@ -144,9 +144,9 @@ Routine Description:
 
 Arguments:
 
-    String - A GUID string in the format {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}.
+    String - Pointer to a GUID string in the format {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}.
 
-    Guid - Pointer to a GUID that receives the data.
+    Guid - Pointer to the GUID data.
 
 Return Value:
 
