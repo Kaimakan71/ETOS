@@ -41,6 +41,16 @@ Archpx64DisableInterruptsAsm:
     cli
     retq
 
+.globl ArchSetDescriptorTableContext
+ArchSetDescriptorTableContext:
+    lgdtq 0x00(%rcx)
+    lidtq 0x0a(%rcx)
+    lldtw 0x14(%rcx)
+    pushq 0x16(%rcx)
+    lea SetSegmentRegisters(%rip), %rax
+    pushq %rax
+    lretq
+
 .globl BlpArchGetDescriptorTableContext
 BlpArchGetDescriptorTableContext:
     sgdtq 0x00(%rcx)
@@ -53,16 +63,6 @@ BlpArchGetDescriptorTableContext:
     movw %gs, 0x1e(%rcx)
     movw %ss, 0x20(%rcx)
     retq
-
-.globl ArchSetDescriptorTableContext
-ArchSetDescriptorTableContext:
-    lgdtq 0x00(%rcx)
-    lidtq 0x0a(%rcx)
-    lldtw 0x14(%rcx)
-    pushq 0x16(%rcx)
-    lea SetSegmentRegisters(%rip), %rax
-    pushq %rax
-    lretq
 
 .globl BlArchIsFiveLevelPagingActive
 BlArchIsFiveLevelPagingActive:
@@ -86,4 +86,18 @@ BlArchIsFiveLevelPagingActive:
     retq
 1:
     xorb %al, %al
+    retq
+
+.global BlArchCpuId
+BlArchCpuId:
+    pushq %rbx
+    movl %ecx, %eax
+    movl %edx, %ecx
+    movq %r8, %r9
+    cpuid
+    movl %eax, 0x00(%r9)
+    movl %ebx, 0x04(%r9)
+    movl %ecx, 0x08(%r9)
+    movl %edx, 0x0c(%r9)
+    popq %rbx
     retq

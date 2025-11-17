@@ -20,13 +20,16 @@ Abstract:
 #include "bootlib.h"
 #endif
 #include "mm.h"
+#include "arch.h"
 
-#define CR4_OSFXSR (1 << 9)
-
-#define IA32_TIME_STAMP_COUNTER 0x00000010
+#define REQUIRED_XSAVE_FEATURES (CPUID_XSAVE_FEATURE_XSAVEOPT | CPUID_XSAVE_FEATURE_XSAVEC | CPUID_XSAVE_FEATURE_XGETBV_ECX1)
 
 EXECUTION_CONTEXT ApplicationExecutionContext, FirmwareExecutionContext;
-PEXECUTION_CONTEXT CurrentExecutionContext;
+PEXECUTION_CONTEXT CurrentExecutionContext = NULL;
+BOOLEAN ArchForceNx = FALSE;
+BOOLEAN ArchDisableNx = FALSE;
+ULONG ArchCr4BitsToClear = 0;
+ULONG ArchXCr0BitsToClear = 0;
 
 VOID
 Archpx64EnableInterruptsAsm (
@@ -71,31 +74,6 @@ Arguments:
 Return Value:
 
     None.
-
---*/
-
-UCHAR
-BlArchIsFiveLevelPagingActive (
-    VOID
-    );
-
-/*++
-
-Routine Description:
-
-    Determines if five-level paging is activated.
-
-    Implemented in archasm.S.
-
-Arguments:
-
-    None.
-
-Return Value:
-
-    Nonzero if active.
-
-    Zero if inactive.
 
 --*/
 
@@ -175,7 +153,7 @@ Return Value:
             return;
         }
 
-        asm volatile("mov %0, %%cr3" ::"r"(NewContext->Cr3));
+        __writecr3(NewContext->Cr3);
         return;
     }
 
@@ -232,7 +210,7 @@ Return Value:
 
 NTSTATUS
 ArchInitializeContext (
-    IN OUT PEXECUTION_CONTEXT Context
+    IN PEXECUTION_CONTEXT Context
     )
 
 /*++
@@ -253,7 +231,6 @@ Return Value:
 
 {
     NTSTATUS Status;
-    ULONG_PTR Cr4;
 
     if (Context->Type == ExecutionContextFirmware) {
         Context->Attributes &= ~(EXECUTION_CONTEXT_5_LEVEL_PAGING_ENABLED | EXECUTION_CONTEXT_INTERRUPTS_DISABLED);
@@ -282,36 +259,127 @@ Return Value:
     //
     Context->Attributes &= ~EXECUTION_CONTEXT_INTERRUPTS_ENABLED;
     Context->Attributes |= EXECUTION_CONTEXT_INTERRUPTS_DISABLED;
-    asm volatile("mov %%cr3, %0" :"=r"(Context->Cr3));
+    Context->Cr3 = __readcr3();
     BlpArchGetDescriptorTableContext(&Context->DescriptorTableContext);
 
     //
     // Check if 5-level paging is active.
     //
-    if (!BlArchIsFiveLevelPagingActive()) {
+    if (BlArchIsFiveLevelPagingActive()) {
+        //
+        // TODO: Finish implementing this routine.
+        //
+        Status = STATUS_SUCCESS;
+        // Status = ArchInitializePagingLevelChangeRoutineVector(Unknown);
+        // if (NT_SUCCESS(Status)) {
+        //     Context->Attributes |= EXECUTION_CONTEXT_5_LEVEL_PAGING_ENABLED;
+        // }
+    } else {
         Context->Attributes &= ~EXECUTION_CONTEXT_5_LEVEL_PAGING_ENABLED;
         Status = STATUS_SUCCESS;
-        goto Finish;
     }
 
     //
-    // TODO: Finish implementing this routine.
-    //
-    Status = STATUS_SUCCESS;
-    // Status = ArchInitializePagingLevelChangeRoutineVector(Unknown);
-    // if (NT_SUCCESS(Status)) {
-    //     Context->Attributes |= EXECUTION_CONTEXT_5_LEVEL_PAGING_ENABLED;
-    // }
-
-Finish:
-    //
     // Enable FXSAVE and FXRSTOR.
     //
-    asm volatile("mov %%cr4, %0" :"=r"(Cr4));
-    Cr4 |= CR4_OSFXSR;
-    asm volatile("mov %0, %%cr4" ::"r"(Cr4));
+    __writecr4(__readcr4() | CR4_OSFXSR);
 
     return Status;
+}
+
+VOID
+ArchEnableProcessorFeatures (
+    VOID
+    )
+
+/*++
+
+Routine Description:
+
+    Enables processor-specific features.
+
+Arguments:
+
+    None.
+
+Return Value:
+
+    None.
+
+--*/
+
+{
+    ULONG_PTR Cr4, XCr0;
+
+    if (!(BlPlatformFlags & PLATFORM_FLAG_XSAVE_SUPPORTED)) {
+        return;
+    }
+
+    Cr4 = __readcr4();
+    if (!(Cr4 & CR4_OSXSAVE)) {
+        Cr4 |= CR4_OSXSAVE;
+        __writecr4(Cr4);
+        ArchCr4BitsToClear = CR4_OSXSAVE;
+    }
+
+    XCr0 = _xgetbv(0);
+    if (!(XCr0 & XCR0_AVX)) {
+        XCr0 |= XCR0_AVX;
+        _xsetbv(0, XCr0);
+        ArchXCr0BitsToClear = XCR0_AVX;
+    }
+}
+
+VOID
+ArchRestoreProcessorFeatures (
+    IN BOOLEAN DisableNx
+    )
+
+/*++
+
+Routine Description:
+
+    Restores processor-specific features.
+
+Arguments:
+
+    DisableNx - Whether or not to disable NX.
+
+Return Value:
+
+    None.
+
+--*/
+
+{
+    //
+    // Clear unwanted XCR0 bits.
+    //
+    if (ArchXCr0BitsToClear != 0) {
+        _xsetbv(0, _xgetbv(0) & ~ArchXCr0BitsToClear);
+        ArchXCr0BitsToClear = 0;
+    }
+
+    //
+    // Clear unwanted CR4 bits.
+    //
+    if (ArchCr4BitsToClear != 0) {
+        __writecr4(__readcr4() & ~ArchCr4BitsToClear);
+        ArchCr4BitsToClear = 0;
+    }
+
+    //
+    // Disable NX.
+    //
+    if (DisableNx) {
+        if (ArchDisableNx) {
+            __writemsr(IA32_EFER, __readmsr(IA32_EFER) & ~IA32_EFER_NXE);
+        }
+
+        if (ArchForceNx) {
+            __writemsr(IA32_MISC_ENABLE, __readmsr(IA32_MISC_ENABLE) | 0x400000000);
+        }
+    }
 }
 
 VOID
@@ -336,25 +404,103 @@ Return Value:
 --*/
 
 {
+    ULONG CpuVendor;
+    CPUID_DATA CpuIdData;
+    ULONGLONG Efer;
+
     //
-    // TODO: Implement this routine.
+    // Disable miscellaneous features.
     //
+    CpuVendor = BlArchGetCpuVendor();
+    if (CpuVendor == CPU_VENDOR_INTEL) {
+        __writemsr(IA32_MISC_ENABLE, __readmsr(IA32_MISC_ENABLE) & ~0x003fffff);
+    }
+
+    //
+    // Enable XSAVE features.
+    //
+    BlArchCpuId(CPUID_FUNCTION_GET_FEATURES, 0, &CpuIdData);
+    if ((CpuIdData.Ecx & CPUID_FEATURE_ECX_XSAVE) && BlArchIsCpuIdFunctionSupported(CPUID_FUNCTION_GET_XSAVE_FEATURES)) {
+        BlArchCpuId(CPUID_FUNCTION_GET_XSAVE_FEATURES, 0, &CpuIdData);
+        if ((CpuIdData.Eax & REQUIRED_XSAVE_FEATURES) == REQUIRED_XSAVE_FEATURES) {
+            BlPlatformFlags |= PLATFORM_FLAG_XSAVE_SUPPORTED;
+        }
+    }
+
+    if (BlpLibraryParameters.Flags & BOOT_LIBRARY_FLAG_ENABLE_NX) {
+        //
+        // Force NX if possible.
+        //
+        BlArchCpuId(CPUID_FUNCTION_GET_EXTENDED_FEATURES, 0, &CpuIdData);
+        if (!(CpuIdData.Edx & CPUID_EXTENDED_FEATURE_EDX_NX) && CpuVendor == CPU_VENDOR_INTEL) {
+            __writemsr(IA32_MISC_ENABLE, __readmsr(IA32_MISC_ENABLE) & ~0xffffffff);
+            ArchForceNx = TRUE;
+        }
+
+        //
+        // Enable NX in EFER.
+        //
+        Efer = __readmsr(IA32_EFER);
+        if (!(Efer & IA32_EFER_NXE)) {
+            __writemsr(IA32_EFER, Efer | IA32_EFER_NXE);
+            ArchDisableNx = TRUE;
+        }
+        BlPlatformFlags |= PLATFORM_FLAG_NX_SUPPORTED;
+    }
+
+    //
+    // Enable the configured features.
+    //
+    ArchEnableProcessorFeatures();
 }
 
-VOID
-ArchRestoreProcessorFeatures (
-    IN BOOLEAN Unknown
-    )
+UCHAR
+BlArchIsFiveLevelPagingActive (
+    VOID
+    );
 
 /*++
 
 Routine Description:
 
-    Restores processor-specific features.
+    Determines if five-level paging is activated.
+
+    Implemented in archasm.S.
 
 Arguments:
 
-    Unknown - Ignored.
+    None.
+
+Return Value:
+
+    Nonzero if active.
+
+    Zero if inactive.
+
+--*/
+
+VOID
+BlArchCpuId (
+    IN  ULONG       Eax,
+    IN  ULONG       Ecx,
+    OUT PCPUID_DATA Result
+    );
+
+/*++
+
+Routine Description:
+
+    Fetches processor identification data.
+
+    Implemented in archasm.S.
+
+Arguments:
+
+    Function - The CPUID function to query.
+
+    Ecx - The value of ECX.
+
+    Result - Pointer to a CPUID_DATA that receives the result.
 
 Return Value:
 
@@ -362,12 +508,80 @@ Return Value:
 
 --*/
 
+BOOLEAN
+BlArchIsCpuIdFunctionSupported (
+    IN ULONG Function
+    )
+
+/*++
+
+Routine Description:
+
+    Determines whether the processor supports a CPUID function.
+
+Arguments:
+
+    Function - The CPUID function.
+
+Return Value:
+
+    TRUE if the function is supported.
+
+    FALSE if the function is not supported.
+
+--*/
+
 {
-    (VOID) Unknown;
+    CPUID_DATA CpuIdData;
+
+    BlArchCpuId(Function & 0x80000000, 0, &CpuIdData);
+
+    return Function <= CpuIdData.Eax;
+}
+
+ULONG
+BlArchGetCpuVendor (
+    VOID
+    )
+
+/*++
+
+Routine Description:
+
+    Identifies the processor's vendor.
+
+Arguments:
+
+    None.
+
+Return Value:
+
+    CPU_VENDOR_*.
+
+--*/
+
+{
+    CPUID_DATA CpuIdData;
+    PSTR VendorString;
 
     //
-    // TODO: Implement this routine.
+    // Get CPUID data.
     //
+    BlArchCpuId(CPUID_FUNCTION_GET_VENDOR, 0, &CpuIdData);
+
+    //
+    // Match vendor string in EBX:ECX:EDX.
+    //
+    VendorString = (PSTR)&CpuIdData.Ebx;
+    if (strncmp(VendorString, CPUID_VENDOR_STRING_INTEL, CPUID_VENDOR_STRING_LENGTH) == 0) {
+        return CPU_VENDOR_INTEL;
+    } else if (strncmp(VendorString, CPUID_VENDOR_STRING_AMD, CPUID_VENDOR_STRING_LENGTH) == 0) {
+        return CPU_VENDOR_AMD;
+    } else if (strncmp(VendorString, CPUID_VENDOR_STRING_CENTAUR, CPUID_VENDOR_STRING_LENGTH) == 0) {
+        return CPU_VENDOR_CENTAUR;
+    } else {
+        return CPU_VENDOR_UNKNOWN;
+    }
 }
 
 VOID
@@ -466,15 +680,13 @@ Return Value:
 
 {
     NTSTATUS Status;
-    ULONGLONG Tsc;
 
     if (Phase == 0) {
         //
         // Reset the TSC to prevent overflow.
         //
-        asm volatile("rdmsr" :"=A"(Tsc) :"c"(IA32_TIME_STAMP_COUNTER));
-        if (Tsc & 0xffc0000000000000) {
-            asm volatile("wrmsr": :"c"(IA32_TIME_STAMP_COUNTER), "a"(0), "d"(0));
+        if (__readmsr(IA32_TIME_STAMP_COUNTER) & 0xffc0000000000000) {
+            __writemsr(IA32_TIME_STAMP_COUNTER, 0);
         }
 
         //
@@ -494,7 +706,7 @@ Return Value:
         //
         FirmwareExecutionContext.Type = ExecutionContextFirmware;
         FirmwareExecutionContext.Attributes = 0;
-        if (BlPlatformFlags & PLATFORM_FLAG_FIRMWARE_EXECUTION_CONTEXT) {
+        if (BlPlatformFlags & PLATFORM_FLAG_FIRMWARE_EXECUTION_CONTEXT_SUPPORTED) {
             Status = ArchInitializeContext(&FirmwareExecutionContext);
             if (!NT_SUCCESS(Status)) {
                 ArchInitializeProcessorFeatures();
