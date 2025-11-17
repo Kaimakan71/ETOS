@@ -25,7 +25,7 @@ EFI_RUNTIME_SERVICES *EfiRT;
 EFI_SIMPLE_TEXT_INPUT_PROTOCOL *EfiConIn;
 EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *EfiConOut;
 EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL *EfiConInEx;
-EFI_GUID EfiSimpleTextInputExProtocol = EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL_GUID;
+const EFI_GUID EfiSimpleTextInputExProtocol = EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL_GUID;
 
 VOID
 BlpFwAppLoadCallback (
@@ -172,7 +172,7 @@ Return Value:
         //
         // Open the extended simple text input protocol.
         //
-        Status = EfiOpenProtocol(EfiST->ConsoleInHandle, &EfiSimpleTextInputExProtocol, (VOID **)&EfiConInEx);
+        Status = EfiOpenProtocol(EfiST->ConsoleInHandle, (EFI_GUID *)&EfiSimpleTextInputExProtocol, (VOID **)&EfiConInEx);
         if (!NT_SUCCESS(Status)) {
             DebugError(L"Failed to open extended simple text input protocol (Status=0x%x)\r\n", Status);
             return Status;
@@ -193,7 +193,7 @@ Return Value:
             ToggleState |= EFI_NUM_LOCK_ACTIVE;
         }
 
-        EfiConInExSetState(EFI_TOGGLE_STATE_VALID | EFI_KEY_STATE_EXPOSED | EFI_NUM_LOCK_ACTIVE, &ToggleState);
+        EfiConInExSetState(ToggleState | EFI_NUM_LOCK_ACTIVE, &ToggleState);
     }
 
     return STATUS_SUCCESS;

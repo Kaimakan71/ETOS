@@ -73,11 +73,9 @@ Arguments:
 
     MapKey - Pointer to the memory map key.
 
-    DescriptorSize - Pointer to a UINTN that receives the size of
-        a single memory descriptor.
+    DescriptorSize - Pointer to a UINTN that receives the size of a single memory descriptor.
 
-    DescriptorVersion - Pointer to a UINT32 that receives the version
-        of memory descriptors being used by the firmware.
+    DescriptorVersion - Pointer to a UINT32 that receives the version of memory descriptors being used by the firmware.
 
 Return Value:
 

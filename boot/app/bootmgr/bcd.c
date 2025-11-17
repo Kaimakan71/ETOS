@@ -204,6 +204,7 @@ Return Value:
     //
     // TODO: Implement this routine.
     //
+    DebugInfo(L"Closing BCD...\r\n");
 
     return STATUS_SUCCESS;
 }
@@ -245,6 +246,8 @@ Return Value:
     PVOID Buffer;
     UNICODE_STRING Path;
 
+    DebugInfo(L"Opening BCD...\r\n");
+
     //
     // Get the BCD path.
     //
@@ -255,6 +258,7 @@ Return Value:
     if (!NT_SUCCESS(Status)) {
         goto Exit;
     }
+    DebugInfo(L"BCD file path: \"%s\"\r\n", FilePath);
 
     //
     // Find length of file path.

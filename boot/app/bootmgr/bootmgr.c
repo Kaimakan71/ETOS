@@ -91,7 +91,7 @@ Return Value:
     //
     // Open the BCD.
     //
-    DebugInfo(L"Opening BCD...\r\n");
+    DataStoreHandle = NULL;
     Status = BmOpenDataStore(&DataStoreHandle);
     if (!NT_SUCCESS(Status)) {
         DebugError(L"Failed to open BCD\r\n");
@@ -109,8 +109,10 @@ Return Value:
     }
 
 Exit:
+    //
+    // Close the BCD.
+    //
     if (DataStoreHandle != NULL) {
-        DebugInfo(L"Closing BCD...\r\n");
         BmCloseDataStore(DataStoreHandle);
     }
 

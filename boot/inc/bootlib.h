@@ -29,6 +29,7 @@ Abstract:
 
 #include <nt.h>
 #include <ntrtl.h>
+#include <ntintsafe.h>
 
 //
 // Set machine type.
@@ -418,7 +419,7 @@ typedef BCDE_DATA_TYPE *PBCDE_DATA_TYPE;
 #define BCDE_OS_LOADER_TYPE_NX_POLICY                 0x25000020
 #define BCDE_OS_LOADER_TYPE_PAE_POLICY                0x25000021
 #define BCDE_OS_LOADER_TYPE_ADVANCED_OPTIONS_ONE_TIME 0x260000c3
-#define BCDE_OS_LOADER_TYPE_BOOLEAN_0000C4            0x260000c4
+#define BCDE_OS_LOADER_TYPE_OPTIONS_EDIT_ONE_TIME     0x260000c4
 
 typedef struct {
     GUID              Options;
@@ -558,6 +559,7 @@ typedef struct {
 #define BOOT_LIBRARY_FLAG_REINITIALIZE            0x00000002
 #define BOOT_LIBRARY_FLAG_REINITIALIZE_ALL        0x00000004
 #define BOOT_LIBRARY_FLAG_INITIALIZATION_COMPLETE 0x00000020
+#define BOOT_LIBRARY_FLAG_ENABLE_NX               0x00010000
 
 typedef struct {
     ULONG Flags;
@@ -671,7 +673,11 @@ typedef struct {
 
 #pragma pack(pop)
 
-#define PLATFORM_FLAG_FIRMWARE_EXECUTION_CONTEXT 0x00100000
+#if defined(__x86_64__)
+#define PLATFORM_FLAG_XSAVE_SUPPORTED                      0x00000001
+#define PLATFORM_FLAG_NX_SUPPORTED                         0x00000002
+#endif
+#define PLATFORM_FLAG_FIRMWARE_EXECUTION_CONTEXT_SUPPORTED 0x00100000
 
 extern ULONG BlPlatformFlags;
 
