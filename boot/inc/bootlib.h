@@ -567,7 +567,7 @@ typedef struct {
     ULONG TranslationType;
     ULONG MinimumAllocationCount;
     ULONG MinimumHeapSize;
-    ULONG Reserved0;
+    ULONG HeapAllocationAttributes;
     PWSTR ApplicationBaseDirectory;
     ULONG Reserved1;
     PWSTR FontBaseDirectory;

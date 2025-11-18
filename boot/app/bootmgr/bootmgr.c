@@ -67,6 +67,7 @@ Return Value:
     LibraryParameters.TranslationType = TRANSLATION_TYPE_NONE;
     LibraryParameters.MinimumAllocationCount = 16;
     LibraryParameters.MinimumHeapSize = 512 * 1024;
+    LibraryParameters.HeapAllocationAttributes = 0;
 #if defined(_EFI)
     LibraryParameters.ApplicationBaseDirectory = L"\\EFI\\Microsoft\\Boot";
 #else

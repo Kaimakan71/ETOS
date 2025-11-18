@@ -112,7 +112,7 @@ Return Value:
     if (TranslationType >= TRANSLATION_TYPE_MAX || LibraryParameters->TranslationType >= TRANSLATION_TYPE_MAX) {
         DebugError(L"Invalid translation type\r\n");
         Status = STATUS_INVALID_PARAMETER;
-        goto Phase0Failed;
+        goto Exit;
     }
 
     //
@@ -123,11 +123,14 @@ Return Value:
     MmGlobalMemoryDescriptorCount = MAX_STATIC_DESCRIPTOR_COUNT;
 
     //
-    // TODO: Implement remaining functionality.
+    // Initialize the heap allocator.
     //
-    Status = STATUS_SUCCESS;
+    Status = MmHapInitialize(LibraryParameters->MinimumHeapSize, LibraryParameters->HeapAllocationAttributes);
+    if (!NT_SUCCESS(Status)) {
+        goto Exit;
+    }
 
-Phase0Failed:
+Exit:
     // MmMdFreeGlobalDescriptors();
     MmDescriptorCallTreeCount--;
     return Status;
