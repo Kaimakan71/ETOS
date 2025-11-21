@@ -66,6 +66,7 @@ Return Value:
     // Validate arguments.
     //
     if (Address == NULL || PageCount == 0 || (Range != NULL && Range->Minimum >= Range->Maximum)) {
+        DebugError(L"Invalid parameter\r\n");
         Status = STATUS_INVALID_PARAMETER;
         goto Exit;
     }
@@ -94,6 +95,7 @@ Return Value:
             (EFI_PHYSICAL_ADDRESS *)&RequestedAddress
         );
 #else
+        DebugError(L"Page allocation not supported\r\n");
         Status = STATUS_NOT_SUPPORTED;
 #endif
 

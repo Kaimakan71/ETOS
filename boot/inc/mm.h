@@ -21,14 +21,16 @@ Abstract:
 
 #include "bootlib.h"
 
-#define MAX_STATIC_DESCRIPTOR_COUNT 1024
-
 #define ALIGN_UP(Value, Alignment) (((Value) + ((Alignment) - 1)) & ~((Alignment) - 1))
 
-#define MM_HEAP_PTR_BUFFER_FREE    0x1
-#define MM_HEAP_PTR_BUFFER_ON_HEAP 0x2
-#define MM_HEAP_PTR_ENTRY_NOT_USED 0x4
-#define MM_HEAP_PTR_DATA_MASK      ~(MM_HEAP_PTR_BUFFER_FREE | MM_HEAP_PTR_BUFFER_ON_HEAP | MM_HEAP_PTR_ENTRY_NOT_USED)
+#define MAX_STATIC_DESCRIPTOR_COUNT 1024
+
+#define MM_HEAP_LINK_BUFFER_FREE    0x1
+#define MM_HEAP_LINK_BUFFER_ON_HEAP 0x2
+#define MM_HEAP_LINK_ENTRY_NOT_USED 0x4
+#define MM_HEAP_LINK_POINTER_MASK   ~(MM_HEAP_LINK_BUFFER_FREE | MM_HEAP_LINK_BUFFER_ON_HEAP | MM_HEAP_LINK_ENTRY_NOT_USED)
+#define MM_HEAP_LINK_DECODE(Link)           ((ULONG_PTR)(Link) & MM_HEAP_LINK_POINTER_MASK)
+#define MM_HEAP_LINK_ENCODE(Pointer, Flags) ((ULONG_PTR)(Pointer) | (ULONG_PTR)(Flags))
 
 typedef struct {
     ULONG_PTR BufferNext;
@@ -120,6 +122,11 @@ MmHaInitialize (
 NTSTATUS
 MmHapHeapAllocatorExtend (
     IN ULONG_PTR HeapSize
+    );
+
+VOID
+MmHaDestroy (
+    VOID
     );
 
 #endif /* !_MM_H */

@@ -54,6 +54,8 @@ Return Value:
         // TODO: Implement remaining functionality.
         //
 
+        MmHaDestroy();
+
         return STATUS_SUCCESS;
     }
 

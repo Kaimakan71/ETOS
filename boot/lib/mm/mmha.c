@@ -17,8 +17,6 @@ Abstract:
 #include "efilib.h"
 #include "mm.h"
 
-#define MIN_ALLOCATION_SIZE 32
-
 #define FREE_LIST_BUCKET_COUNT 7
 #define FREE_LIST_SIZE (sizeof(PMM_FREE_HEAP_ENTRY) * FREE_LIST_BUCKET_COUNT)
 
@@ -51,7 +49,7 @@ Return Value:
 --*/
 
 {
-    return (HeapEntry->BufferNext & MM_HEAP_PTR_DATA_MASK) - (ULONG_PTR)HeapEntry;
+    return MM_HEAP_LINK_DECODE(HeapEntry->BufferNext) - (ULONG_PTR)HeapEntry;
 }
 
 ULONG
@@ -131,22 +129,26 @@ Return Value:
     //
     BucketIndex = MmHapGetBucketIndex(BufferSize);
     if (BucketIndex >= FREE_LIST_BUCKET_COUNT) {
+        DebugError(L"Invalid bucket index\r\n");
         return NULL;
     }
 
+    //
+    // Search the freelist.
+    //
     do {
         FreeEntry = MmFreeList != NULL ? MmFreeList[BucketIndex] : NULL;
 
         //
         // Find a large enough free entry in the bucket.
         //
-        while (FreeEntry) {
+        while (FreeEntry != NULL) {
             FreeBufferSize = MmHapGetBufferSize(FreeEntry);
             if (FreeBufferSize >= BufferSize) {
                 break;
             }
 
-            FreeEntry = (PMM_FREE_HEAP_ENTRY)(FreeEntry->FreeNext & MM_HEAP_PTR_DATA_MASK);
+            FreeEntry = (PMM_FREE_HEAP_ENTRY)(MM_HEAP_LINK_DECODE(FreeEntry->FreeNext));
         }
 
         //
@@ -213,18 +215,26 @@ Return Value:
 --*/
 
 {
+    NTSTATUS Status;
+
     //
     // The heap allocator must be initialized.
     //
     if (HapInitializationStatus != 1) {
+        DebugError(L"Heap allocator not initialized\r\n");
         return STATUS_UNSUCCESSFUL;
     }
 
     //
     // TODO: Don't use the firmware allocator.
     //
+    Status = EfiFreePool(Pointer);
+    if (!NT_SUCCESS(Status)) {
+        DebugError(L"EfiFreePool failed (Status=0x%x)\r\n", Status);
+        return Status;
+    }
 
-    return EfiFreePool(Pointer);
+    return STATUS_SUCCESS;
 }
 
 PVOID
@@ -259,6 +269,7 @@ Return Value:
     // The heap allocator must be initialized.
     //
     if (HapInitializationStatus != 1) {
+        DebugError(L"Heap allocator not initialized\r\n");
         return NULL;
     }
 
@@ -267,6 +278,7 @@ Return Value:
     //
     RealSize = ALIGN_UP(Size + FIELD_OFFSET(MM_USED_HEAP_ENTRY, Buffer), FIELD_OFFSET(MM_USED_HEAP_ENTRY, Buffer));
     if (RealSize <= Size) {
+        DebugError(L"Integer overflow\r\n");
         return NULL;
     }
 
@@ -283,10 +295,37 @@ Return Value:
 
     Status = EfiAllocatePool(EfiLoaderData, Size, &Buffer);
     if (!NT_SUCCESS(Status)) {
+        DebugError(L"EfiAllocatePool failed (Status=0x%x)\r\n", Status);
         return NULL;
     }
 
     return Buffer;
+}
+
+VOID
+MmHaDestroy (
+    VOID
+    )
+
+/*++
+
+Routine Description:
+
+    Destroys the heap allocator.
+
+Arguments:
+
+    None.
+
+Return Value:
+
+    None.
+
+--*/
+
+{
+    DebugInfo(L"Destroying heap allocator...\r\n");
+    HapInitializationStatus = 0;
 }
 
 NTSTATUS
@@ -356,7 +395,7 @@ Return Value:
     }
 
     //
-    // Allocate a new heap.
+    // Allocate memory for the heap.
     //
     HeapBase = NULL;
     Status = BlMmAllocatePagesInRange(
@@ -368,6 +407,7 @@ Return Value:
         0
     );
     if (!NT_SUCCESS(Status)) {
+        DebugError(L"Heap memory allocation failed\r\n");
         return Status;
     }
 
@@ -381,7 +421,7 @@ Return Value:
     //
     // The first buffer contains the heap boundary structure.
     //
-    FirstHeapEntry->BufferNext = (ULONG_PTR)SecondHeapEntry & MM_HEAP_PTR_DATA_MASK;
+    FirstHeapEntry->BufferNext = MM_HEAP_LINK_DECODE(SecondHeapEntry);
     FirstHeapEntry->BufferPrevious = 0;
     HeapBoundary->HeapBase = (ULONG_PTR)HeapBase;
     HeapBoundary->HeapLimit = (ULONG_PTR)HeapBase + HeapSize;
@@ -390,7 +430,7 @@ Return Value:
     //
     // The second buffer is free.
     //
-    SecondHeapEntry->BufferNext = (ULONG_PTR)SecondHeapEntry | (MM_HEAP_PTR_BUFFER_FREE | MM_HEAP_PTR_BUFFER_ON_HEAP);
+    SecondHeapEntry->BufferNext = MM_HEAP_LINK_ENCODE(SecondHeapEntry, MM_HEAP_LINK_BUFFER_FREE | MM_HEAP_LINK_BUFFER_ON_HEAP);
     SecondHeapEntry->BufferPrevious = (ULONG_PTR)FirstHeapEntry;
 
     //
