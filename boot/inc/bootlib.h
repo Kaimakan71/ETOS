@@ -635,6 +635,27 @@ typedef struct {
 } BOOT_OPTION_CALLBACKS, *PBOOT_OPTION_CALLBACKS;
 
 //
+// Table entry comparison function.
+//
+
+typedef
+BOOLEAN
+(*PTABLE_SEARCH_CALLBACK) (
+    IN PVOID Entry,
+    IN PVOID Argument1,
+    IN PVOID Argument2,
+    IN PVOID Argument3,
+    IN PVOID Argument4
+    );
+
+typedef
+NTSTATUS
+(*PTABLE_MAP_CALLBACK) (
+    IN PVOID Entry,
+    IN ULONG EntryIndex
+    );
+
+//
 // Execution context.
 //
 
@@ -720,6 +741,29 @@ VOID
 BlCopyStringToWcharString (
     OUT PWSTR Destination,
     IN  PSTR  Source
+    );
+
+//
+// Table services.
+//
+
+PVOID
+BlTblFindEntry (
+    IN  PVOID                  *Table,
+    IN  ULONG                  EntryCount,
+    OUT PULONG                 EntryIndex,
+    IN  PTABLE_SEARCH_CALLBACK Callback,
+    IN  PVOID                  Argument1,
+    IN  PVOID                  Argument2,
+    IN  PVOID                  Argument3,
+    IN  PVOID                  Argument4
+    );
+
+NTSTATUS
+BlTblMap (
+    IN PVOID               *Table,
+    IN ULONG               EntryCount,
+    IN PTABLE_MAP_CALLBACK Callback
     );
 
 //
